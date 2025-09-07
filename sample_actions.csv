@@ -1,0 +1,20 @@
+action,xpath,data
+open_url,https://portal.cluster.dev.supervvisor.com/home,
+click,//span[text()="Login"],
+type,//input[@id="username"],shubham.zurange@blattnertech.com
+click,//button[text()='Continue'],
+type,//input[@id="password"],Testing@2201
+click,//button[text()='Continue'],
+click,//span[normalize-space()='shubham testing'],
+verify,//span[text()='Dashboard'],
+wait,5,
+js_click,//span[text()='Open bento menu'],
+click,//img[@alt='/trac'],
+click,//span[normalize-space()='PD Claims'],
+click,//a[text()='New Claim'],
+type,//input[@placeholder='9876'],
+js_click,//span[text()='Select claim source'],
+wait,2,
+js_click,//span[text()='Mail'],
+
+

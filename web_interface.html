@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent - Browser Automation Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready { background-color: #48bb78; }
+        .status-running { background-color: #ed8936; animation: pulse 1.5s infinite; }
+        .status-completed { background-color: #4299e1; }
+        .status-error { background-color: #f56565; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .script-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .script-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f7fafc;
+            transition: background-color 0.3s ease;
+        }
+
+        .script-item:hover {
+            background-color: #f7fafc;
+        }
+
+        .script-item:last-child {
+            border-bottom: none;
+        }
+
+        .script-info {
+            flex: 1;
+        }
+
+        .script-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .script-status {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .logs-container {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-info { color: #63b3ed; }
+        .log-success { color: #68d391; }
+        .log-warning { color: #f6e05e; }
+        .log-error { color: #fc8181; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .installation-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .browser-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .browser-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .browser-option:hover {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+
+        .browser-option.selected {
+            border-color: #667eea;
+            background-color: #e6fffa;
+        }
+
+        .browser-option input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .browser-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Agent Dashboard</h1>
+            <p>Browser Automation Made By Shubham Zurange</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Installation & Configuration Card -->
+            <div class="card">
+                <h2>🔧 Installation & Configuration</h2>
+                
+                <div class="installation-status">
+                    <div>
+                        <span class="status-indicator status-ready"></span>
+                        <strong>System Status:</strong> Ready
+                    </div>
+                    <button class="btn btn-warning" onclick="checkInstallation()">Check Installation</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Browser Selection:</label>
+                    <div class="browser-grid">
+                        <div class="browser-option" onclick="selectBrowser('chrome')">
+                            <input type="radio" name="browser" value="chrome" checked>
+                            <span class="browser-icon">🌐</span>
+                            <span>Chrome</span>
+                        </div>
+                        <div class="browser-option" onclick="selectBrowser('firefox')">
+                            <input type="radio" name="browser" value="firefox">
+                            <span class="browser-icon">🦊</span>
+                            <span>Firefox</span>
+                        </div>
+                        <div class="browser-option" onclick="selectBrowser('edge')">
+                            <input type="radio" name="browser" value="edge">
+                            <span class="browser-icon">🔷</span>
+                            <span>Edge</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-success" onclick="installDependencies()">Install Dependencies</button>
+                    <button class="btn" onclick="downloadDrivers()">Download Drivers</button>
+                    <button class="btn btn-warning" onclick="testBrowser()">Test Browser</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalScripts">0</div>
+                        <div class="stat-label">Total Scripts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="runningScripts">0</div>
+                        <div class="stat-label">Running</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedScripts">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script Management Card -->
+            <div class="card">
+                <h2>📋 Script Management</h2>
+                
+                <div class="form-group">
+                    <label>Available CSV Scripts:</label>
+                    <div class="script-list" id="scriptList">
+                        <!-- Scripts will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn" onclick="refreshScripts()">🔄 Refresh Scripts</button>
+                    <button class="btn btn-success" onclick="runSelectedScripts()">▶️ Run Selected</button>
+                    <button class="btn btn-danger" onclick="stopAllScripts()">⏹️ Stop All</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload New CSV Script:</label>
+                    <input type="file" class="form-control" id="csvUpload" accept=".csv" onchange="uploadScript()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Execution Logs -->
+        <div class="card">
+            <h2>📊 Execution Logs & Progress</h2>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry log-info">🚀 AI Agent Dashboard Ready</div>
+                <div class="log-entry log-info">📋 Waiting for script execution...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let selectedBrowser = 'chrome';
+        let scripts = [];
+        let runningScripts = new Map();
+        let logs = [];
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadScripts();
+            updateStats();
+            addLog('info', 'Dashboard initialized successfully');
+        });
+
+        // Browser selection
+        function selectBrowser(browser) {
+            selectedBrowser = browser;
+            document.querySelectorAll('.browser-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            addLog('info', `Browser changed to: ${browser}`);
+        }
+
+        // Installation management
+        async function checkInstallation() {
+            addLog('info', 'Checking system installation...');
+            try {
+                const response = await fetch('/api/check-installation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser: selectedBrowser })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('success', '✅ Installation check completed');
+                    updateInstallationStatus('ready');
+                } else {
+                    addLog('warning', '⚠️ Some dependencies missing');
+                    updateInstallationStatus('warning');
+                }
+            } catch (error) {
+                addLog('error', `❌ Installation check failed: ${error.message}`);
+            }
+        }
+
+        async function installDependencies() {
+            addLog('info', 'Installing dependencies...');
+            try {
+                const response = await fetch('/api/install-dependencies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser: selectedBrowser })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('success', '✅ Dependencies installed successfully');
+                    updateInstallationStatus('ready');
+                } else {
+                    addLog('error', `❌ Installation failed: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Installation error: ${error.message}`);
+            }
+        }
+
+        async function downloadDrivers() {
+            addLog('info', 'Downloading browser drivers...');
+            try {
+                const response = await fetch('/api/download-drivers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser: selectedBrowser })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('success', '✅ Drivers downloaded successfully');
+                } else {
+                    addLog('error', `❌ Driver download failed: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Driver download error: ${error.message}`);
+            }
+        }
+
+        async function testBrowser() {
+            addLog('info', `🧪 Testing ${selectedBrowser} browser...`);
+            try {
+                const response = await fetch('/api/test-browser', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ browser: selectedBrowser })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('success', `✅ ${selectedBrowser} browser test passed!`);
+                    addLog('info', `📄 Page title: ${result.title}`);
+                } else {
+                    addLog('error', `❌ ${selectedBrowser} browser test failed: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Browser test error: ${error.message}`);
+            }
+        }
+
+        // Script management
+        async function loadScripts() {
+            try {
+                const response = await fetch('/api/scripts');
+                const result = await response.json();
+                
+                if (result.success) {
+                    scripts = result.scripts || [];
+                    addLog('success', `✅ Loaded ${scripts.length} scripts`);
+                    displayScripts();
+                    updateStats();
+                } else {
+                    addLog('error', `❌ Failed to load scripts: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Failed to load scripts: ${error.message}`);
+            }
+        }
+
+        function displayScripts() {
+            const scriptList = document.getElementById('scriptList');
+            scriptList.innerHTML = '';
+
+            scripts.forEach((script, index) => {
+                const scriptItem = document.createElement('div');
+                scriptItem.className = 'script-item';
+                scriptItem.innerHTML = `
+                    <div class="script-info">
+                        <div class="script-name">${script.name}</div>
+                        <div class="script-status">
+                            <span class="status-indicator ${getStatusClass(script.status)}"></span>
+                            ${script.status} - ${script.actions || 0} actions
+                        </div>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="script-${index}" onchange="toggleScript(${index})">
+                        <button class="btn" onclick="runScript('${script.name}')" ${script.status === 'running' ? 'disabled' : ''}>
+                            ${script.status === 'running' ? '⏳' : '▶️'}
+                        </button>
+                    </div>
+                `;
+                scriptList.appendChild(scriptItem);
+            });
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'ready': return 'status-ready';
+                case 'running': return 'status-running';
+                case 'completed': return 'status-completed';
+                case 'error': return 'status-error';
+                default: return 'status-ready';
+            }
+        }
+
+        async function runScript(scriptName) {
+            addLog('info', `🚀 Starting script: ${scriptName}`);
+            
+            try {
+                const response = await fetch('/api/run-script', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        script: scriptName, 
+                        browser: selectedBrowser 
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    runningScripts.set(scriptName, result.sessionId);
+                    updateScriptStatus(scriptName, 'running');
+                    addLog('success', `✅ Script started: ${scriptName}`);
+                    startProgressTracking(scriptName);
+                } else {
+                    addLog('error', `❌ Failed to start script: ${scriptName}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Error starting script: ${error.message}`);
+            }
+        }
+
+        async function runSelectedScripts() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                addLog('warning', '⚠️ No scripts selected');
+                return;
+            }
+
+            addLog('info', `🚀 Starting ${checkboxes.length} selected scripts...`);
+            
+            for (const checkbox of checkboxes) {
+                const scriptIndex = checkbox.id.split('-')[1];
+                const scriptName = scripts[scriptIndex].name;
+                await runScript(scriptName);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay between starts
+            }
+        }
+
+        async function stopAllScripts() {
+            addLog('info', '⏹️ Stopping all running scripts...');
+            
+            for (const [scriptName, sessionId] of runningScripts) {
+                try {
+                    await fetch('/api/stop-script', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId })
+                    });
+                    updateScriptStatus(scriptName, 'ready');
+                    addLog('info', `⏹️ Stopped: ${scriptName}`);
+                } catch (error) {
+                    addLog('error', `❌ Error stopping ${scriptName}: ${error.message}`);
+                }
+            }
+            
+            runningScripts.clear();
+            updateStats();
+        }
+
+        async function uploadScript() {
+            const fileInput = document.getElementById('csvUpload');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+
+            addLog('info', `📤 Uploading script: ${file.name}`);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload-script', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    addLog('success', `✅ Script uploaded: ${file.name}`);
+                    loadScripts(); // Refresh the script list
+                } else {
+                    addLog('error', `❌ Upload failed: ${file.name}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Upload error: ${error.message}`);
+            }
+        }
+
+        function refreshScripts() {
+            addLog('info', '🔄 Refreshing script list...');
+            loadScripts();
+            // Also refresh the page to ensure we get the latest file list
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        function toggleScript(index) {
+            // Handle script selection logic
+        }
+
+        // Progress tracking
+        function startProgressTracking(scriptName) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/script-progress/${runningScripts.get(scriptName)}`);
+                    const progress = await response.json();
+                    
+                    updateProgress(progress.percentage);
+                    
+                    if (progress.status === 'completed' || progress.status === 'error') {
+                        clearInterval(interval);
+                        runningScripts.delete(scriptName);
+                        updateScriptStatus(scriptName, progress.status);
+                        addLog(progress.status === 'completed' ? 'success' : 'error', 
+                               `📊 Script ${progress.status}: ${scriptName}`);
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    addLog('error', `❌ Progress tracking error: ${error.message}`);
+                }
+            }, 2000);
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+        }
+
+        function updateScriptStatus(scriptName, status) {
+            const script = scripts.find(s => s.name === scriptName);
+            if (script) {
+                script.status = status;
+                displayScripts();
+                updateStats();
+            }
+        }
+
+        function updateInstallationStatus(status) {
+            const indicator = document.querySelector('.status-indicator');
+            indicator.className = `status-indicator status-${status}`;
+        }
+
+        function updateStats() {
+            const total = scripts.length;
+            const running = scripts.filter(s => s.status === 'running').length;
+            const completed = scripts.filter(s => s.status === 'completed').length;
+
+            document.getElementById('totalScripts').textContent = total;
+            document.getElementById('runningScripts').textContent = running;
+            document.getElementById('completedScripts').textContent = completed;
+        }
+
+        function addLog(type, message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            
+            // Keep only last 100 log entries
+            while (logsContainer.children.length > 100) {
+                logsContainer.removeChild(logsContainer.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

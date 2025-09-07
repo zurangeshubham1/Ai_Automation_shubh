@@ -1,0 +1,23 @@
+action,xpath,data
+open_url,https://example.com/forms,
+wait,5,
+type,//input[@id="name"],John Doe
+type,//input[@id="email"],john@example.com
+select_dropdown,//select[@id="country"],United States
+select_dropdown,//select[@id="state"],California
+upload_file,//input[@type="file"],C:\Users\Admin\Pictures\sample.jpg
+wait_for_element,//div[@id="success-message"],
+verify,text=Form submitted successfully,
+click,//button[@id="submit"],
+wait_for_visible,//div[@class="confirmation"],
+hover,//span[@class="tooltip-trigger"],
+double_click,//div[@id="editable-text"],
+right_click,//div[@id="context-menu"],
+scroll_to,//footer[@id="page-footer"],
+switch_to_frame,//iframe[@id="embedded-form"],
+type,//input[@id="embedded-field"],Embedded data
+switch_to_default,
+clear,//input[@id="name"],
+type,//input[@id="name"],Jane Doe
+wait_for_clickable,//button[@id="final-submit"],
+click,//button[@id="final-submit"],
