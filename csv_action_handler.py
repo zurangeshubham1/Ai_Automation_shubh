@@ -507,9 +507,11 @@ class CSVActionHandler:
                 return True
                 
             except Exception as e:
-                print(f"❌ Test failed with error: {e}")
+                error_msg = f"Test failed with error: {e}"
+                print(f"❌ {error_msg}")
                 self.status = 'error'
-                self.logs.append(f"Test failed with error: {e}")
+                self.logs.append(error_msg)
+                self.logs.append(f"Error details: {type(e).__name__}: {str(e)}")
                 allure.attach(f"Test failed with error: {e}", 
                             name="Test Error", attachment_type=AttachmentType.TEXT)
                 return False

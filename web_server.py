@@ -189,9 +189,10 @@ def api_run_script():
                     except Exception as e:
                         print(f"DEBUG: Headless browser execution failed: {str(e)}")
                         handler.status = 'failed'
-                        handler.logs.append(f"Headless browser execution failed: {str(e)}")
+                        handler.logs.append(f"Script execution failed: {str(e)}")
                         script_sessions[session_id]['status'] = 'failed'
                         script_sessions[session_id]['end_time'] = datetime.now()
+                        script_sessions[session_id]['error'] = str(e)
                 else:
                     # Run normally for local environment
                     handler.run_actions_from_csv(script_name)
