@@ -54,6 +54,11 @@ def index():
     """Serve the main dashboard"""
     return send_from_directory('.', 'web_interface.html')
 
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({'status': 'healthy', 'message': 'AI Agent is running!'})
+
 @app.route('/api/scripts')
 def api_scripts():
     """Get available scripts"""
