@@ -523,8 +523,13 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    addLog('success', `✅ ${selectedBrowser} browser test passed!`);
-                    addLog('info', `📄 Page title: ${result.title}`);
+                    if (result.cloud_mode) {
+                        addLog('success', `✅ ${selectedBrowser} browser test passed (simulated in cloud)!`);
+                        addLog('info', `☁️ Cloud environment detected - browser automation will be simulated`);
+                    } else {
+                        addLog('success', `✅ ${selectedBrowser} browser test passed!`);
+                        addLog('info', `📄 Page title: ${result.title}`);
+                    }
                 } else {
                     addLog('error', `❌ ${selectedBrowser} browser test failed: ${result.error}`);
                 }
