@@ -47,11 +47,15 @@ class CSVActionHandler:
         try:
             # Check if running in cloud environment
             if self._is_cloud_environment():
-                print("☁️ Running in cloud environment - browser automation not available")
-                print("💡 Use the web interface for script management and testing")
-                self.driver = None
-                self.wait = None
-                return
+                print("☁️ Running in cloud environment - setting up headless browser")
+                if self._setup_headless_browser(self.browser):
+                    print("✅ Headless browser setup successful - real automation enabled")
+                    return
+                else:
+                    print("❌ Failed to setup headless browser - falling back to simulation")
+                    self.driver = None
+                    self.wait = None
+                    return
             
             if self.browser.lower() == 'chrome':
                 self._setup_chrome()
@@ -86,6 +90,70 @@ class CSVActionHandler:
             'DISPLAY' not in os.environ,   # No display available
         ]
         return any(cloud_indicators)
+    
+    def _setup_headless_browser(self, browser_type='chrome'):
+        """Setup headless browser for cloud environments"""
+        try:
+            if browser_type.lower() == 'chrome':
+                from selenium import webdriver
+                from selenium.webdriver.chrome.options import Options
+                from webdriver_manager.chrome import ChromeDriverManager
+                from selenium.webdriver.chrome.service import Service
+                
+                chrome_options = Options()
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920,1080')
+                chrome_options.add_argument('--disable-extensions')
+                chrome_options.add_argument('--disable-plugins')
+                chrome_options.add_argument('--disable-images')
+                chrome_options.add_argument('--disable-javascript')
+                chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+                
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                print(f"✅ Headless Chrome browser started successfully")
+                
+            elif browser_type.lower() == 'firefox':
+                from selenium import webdriver
+                from selenium.webdriver.firefox.options import Options
+                from webdriver_manager.firefox import GeckoDriverManager
+                from selenium.webdriver.firefox.service import Service
+                
+                firefox_options = Options()
+                firefox_options.add_argument('--headless')
+                firefox_options.add_argument('--no-sandbox')
+                firefox_options.add_argument('--disable-dev-shm-usage')
+                
+                service = Service(GeckoDriverManager().install())
+                self.driver = webdriver.Firefox(service=service, options=firefox_options)
+                print(f"✅ Headless Firefox browser started successfully")
+                
+            elif browser_type.lower() == 'edge':
+                from selenium import webdriver
+                from selenium.webdriver.edge.options import Options
+                from webdriver_manager.microsoft import EdgeChromiumDriverManager
+                from selenium.webdriver.edge.service import Service
+                
+                edge_options = Options()
+                edge_options.add_argument('--headless')
+                edge_options.add_argument('--no-sandbox')
+                edge_options.add_argument('--disable-dev-shm-usage')
+                edge_options.add_argument('--disable-gpu')
+                edge_options.add_argument('--window-size=1920,1080')
+                
+                service = Service(EdgeChromiumDriverManager().install())
+                self.driver = webdriver.Edge(service=service, options=edge_options)
+                print(f"✅ Headless Edge browser started successfully")
+            
+            self.wait = WebDriverWait(self.driver, 10)
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to setup headless {browser_type} browser: {str(e)}")
+            return False
     
     def _setup_chrome(self):
         """Setup Chrome driver"""
@@ -213,8 +281,9 @@ class CSVActionHandler:
         print(f"🔄 Executing: {action} on {xpath}")
         
         # Check if running in cloud environment
-        if self._is_cloud_environment() and action not in ['wait', 'verify']:
-            print(f"☁️ Cloud environment: Simulating {action} action")
+        # Check if we have a real browser driver (headless or regular)
+        if self.driver is None and action not in ['wait', 'verify']:
+            print(f"☁️ No browser available: Simulating {action} action")
             self.logs.append(f"Simulated: {self.current_action}")
             time.sleep(1)  # Simulate action time
             return True

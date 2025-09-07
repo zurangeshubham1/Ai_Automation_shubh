@@ -179,28 +179,19 @@ def api_run_script():
                 ]
                 
                 if any(cloud_indicators):
-                    print(f"DEBUG: Cloud environment detected - simulating script execution")
-                    # Simulate script execution in cloud
-                    handler.status = 'running'
-                    handler.progress = 0
-                    handler.completed_actions = 0
-                    
-                    # Read CSV to get action count
-                    actions = handler.read_csv_actions(script_name)
-                    handler.total_actions = len(actions)
-                    
-                    # Simulate progress
-                    for i, action in enumerate(actions):
-                        handler.completed_actions = i + 1
-                        handler.progress = int((handler.completed_actions / handler.total_actions) * 100)
-                        handler.logs.append(f"Simulated: {action['action']} on {action['xpath']}")
-                        time.sleep(0.5)  # Simulate action time
-                    
-                    handler.status = 'completed'
-                    handler.progress = 100
-                    script_sessions[session_id]['status'] = 'completed'
-                    script_sessions[session_id]['end_time'] = datetime.now()
-                    print(f"DEBUG: Script {script_name} completed (simulated) with status: completed")
+                    print(f"DEBUG: Cloud environment detected - running with headless browser")
+                    # Run with headless browser in cloud
+                    try:
+                        handler.run_actions_from_csv(script_name)
+                        script_sessions[session_id]['status'] = handler.status
+                        script_sessions[session_id]['end_time'] = datetime.now()
+                        print(f"DEBUG: Script {script_name} completed with headless browser, status: {handler.status}")
+                    except Exception as e:
+                        print(f"DEBUG: Headless browser execution failed: {str(e)}")
+                        handler.status = 'failed'
+                        handler.logs.append(f"Headless browser execution failed: {str(e)}")
+                        script_sessions[session_id]['status'] = 'failed'
+                        script_sessions[session_id]['end_time'] = datetime.now()
                 else:
                     # Run normally for local environment
                     handler.run_actions_from_csv(script_name)
@@ -401,13 +392,34 @@ def api_test_browser():
         ]
         
         if any(cloud_indicators):
-            print(f"DEBUG: Cloud environment detected - browser automation not available")
-            return jsonify({
-                'success': True, 
-                'message': f'{browser} browser test passed (simulated in cloud)',
-                'title': 'Cloud Environment - Browser Automation Simulated',
-                'cloud_mode': True
-            })
+            print(f"DEBUG: Cloud environment detected - testing headless browser")
+            # Test headless browser setup
+            try:
+                handler = CSVActionHandler(browser=browser, session_id='test')
+                handler.setup_driver()
+                if handler.driver is not None:
+                    handler.driver.quit()
+                    return jsonify({
+                        'success': True, 
+                        'message': f'{browser} headless browser test passed',
+                        'title': 'Headless Browser Ready',
+                        'cloud_mode': False
+                    })
+                else:
+                    return jsonify({
+                        'success': False, 
+                        'message': f'{browser} headless browser test failed',
+                        'title': 'Browser Test Failed',
+                        'cloud_mode': True
+                    })
+            except Exception as e:
+                print(f"DEBUG: Headless browser test failed: {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'message': f'{browser} browser test failed: {str(e)}',
+                    'title': 'Browser Test Failed',
+                    'cloud_mode': True
+                })
         
         # Create a test handler for local testing
         test_handler = WebCSVHandler(browser)
