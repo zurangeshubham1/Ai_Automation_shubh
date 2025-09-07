@@ -418,7 +418,8 @@ def api_test_browser():
                     'success': False, 
                     'message': f'{browser} browser test failed: {str(e)}',
                     'title': 'Browser Test Failed',
-                    'cloud_mode': True
+                    'cloud_mode': True,
+                    'error': str(e)
                 })
         
         # Create a test handler for local testing
