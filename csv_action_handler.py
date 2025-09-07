@@ -45,6 +45,14 @@ class CSVActionHandler:
     def setup_driver(self):
         """Setup browser driver based on selected browser"""
         try:
+            # Check if running in cloud environment
+            if self._is_cloud_environment():
+                print("☁️ Running in cloud environment - browser automation not available")
+                print("💡 Use the web interface for script management and testing")
+                self.driver = None
+                self.wait = None
+                return
+            
             if self.browser.lower() == 'chrome':
                 self._setup_chrome()
             elif self.browser.lower() == 'firefox':
@@ -61,7 +69,23 @@ class CSVActionHandler:
             
         except Exception as e:
             print(f"❌ Failed to open browser: {e}")
-            raise e
+            print("☁️ This might be due to cloud environment limitations")
+            self.driver = None
+            self.wait = None
+    
+    def _is_cloud_environment(self):
+        """Check if running in cloud environment"""
+        import os
+        cloud_indicators = [
+            'RAILWAY_ENVIRONMENT' in os.environ,
+            'RENDER' in os.environ,
+            'HEROKU' in os.environ,
+            'VERCEL' in os.environ,
+            'NETLIFY' in os.environ,
+            os.path.exists('/.dockerenv'),  # Docker container
+            'DISPLAY' not in os.environ,   # No display available
+        ]
+        return any(cloud_indicators)
     
     def _setup_chrome(self):
         """Setup Chrome driver"""
@@ -187,6 +211,13 @@ class CSVActionHandler:
         self.current_action = f"{action} on {xpath}"
         self.logs.append(f"Executing: {self.current_action}")
         print(f"🔄 Executing: {action} on {xpath}")
+        
+        # Check if running in cloud environment
+        if self._is_cloud_environment() and action not in ['wait', 'verify']:
+            print(f"☁️ Cloud environment: Simulating {action} action")
+            self.logs.append(f"Simulated: {self.current_action}")
+            time.sleep(1)  # Simulate action time
+            return True
         
         # Take screenshot before action
         self.take_screenshot(f"before_{step_name}")

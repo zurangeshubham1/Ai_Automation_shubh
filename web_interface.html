@@ -315,6 +315,9 @@
         <div class="header">
             <h1>🤖 AI Agent Dashboard</h1>
             <p>Browser Automation Made By Shubham Zurange</p>
+            <div id="cloud-notice" style="display: none; background: #e6f3ff; color: #0066cc; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                ☁️ <strong>Cloud Environment:</strong> Browser automation is simulated in cloud environments. For full browser automation, run locally.
+            </div>
         </div>
 
         <div class="dashboard">
@@ -424,6 +427,15 @@
             loadScripts();
             updateStats();
             addLog('info', 'Dashboard initialized successfully');
+            
+            // Check if running in cloud environment
+            if (window.location.hostname.includes('railway.app') || 
+                window.location.hostname.includes('render.com') ||
+                window.location.hostname.includes('herokuapp.com') ||
+                window.location.hostname.includes('vercel.app')) {
+                document.getElementById('cloud-notice').style.display = 'block';
+                addLog('info', '☁️ Running in cloud environment - browser automation will be simulated');
+            }
         });
 
         // Browser selection
