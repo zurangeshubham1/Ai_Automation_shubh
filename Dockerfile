@@ -70,8 +70,8 @@ RUN echo '#!/bin/bash\n\
 Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &\n\
 # Wait a moment for xvfb to start\n\
 sleep 2\n\
-# Execute the Procfile command\n\
-exec sh -c "PORT=${PORT:-5000} && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"' > /app/start.sh && \
+# Start the application with default port\n\
+exec gunicorn app:app --bind 0.0.0.0:5000 --workers 1 --timeout 120' > /app/start.sh && \
     chmod +x /app/start.sh
 
 # Start command
