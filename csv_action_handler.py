@@ -155,31 +155,39 @@ class CSVActionHandler:
                 chrome_options.add_argument('--disable-renderer-backgrounding')
                 chrome_options.add_argument('--disable-features=TranslateUI')
                 chrome_options.add_argument('--disable-ipc-flooding-protection')
-                chrome_options.add_argument('--single-process')
                 chrome_options.add_argument('--disable-logging')
                 chrome_options.add_argument('--disable-default-apps')
                 chrome_options.add_argument('--disable-sync')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-extensions')
+                chrome_options.add_argument('--disable-plugins')
+                chrome_options.add_argument('--disable-images')
+                chrome_options.add_argument('--disable-javascript')
+                chrome_options.add_argument('--disable-web-security')
+                chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+                chrome_options.add_argument('--remote-debugging-port=9222')
+                chrome_options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
                 
                 # Try multiple approaches to setup Chrome
                 driver_setup_success = False
                 
-                # Method 1: Try ChromeDriverManager
+                # Method 1: Try system chromedriver (most reliable for Railway)
                 try:
-                    service = Service(ChromeDriverManager().install())
-                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                    self.driver = webdriver.Chrome(options=chrome_options)
                     driver_setup_success = True
-                    print("✅ Chrome driver setup with ChromeDriverManager")
+                    print("✅ Chrome driver setup with system chromedriver")
                 except Exception as e:
-                    print(f"⚠️ ChromeDriverManager failed: {e}")
+                    print(f"⚠️ System chromedriver failed: {e}")
                 
-                # Method 2: Try system chromedriver
+                # Method 2: Try ChromeDriverManager
                 if not driver_setup_success:
                     try:
-                        self.driver = webdriver.Chrome(options=chrome_options)
+                        service = Service(ChromeDriverManager().install())
+                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
                         driver_setup_success = True
-                        print("✅ Chrome driver setup with system chromedriver")
+                        print("✅ Chrome driver setup with ChromeDriverManager")
                     except Exception as e:
-                        print(f"⚠️ System chromedriver failed: {e}")
+                        print(f"⚠️ ChromeDriverManager failed: {e}")
                 
                 # Method 3: Try with xvfb-run (for headless environments)
                 if not driver_setup_success:
@@ -191,7 +199,40 @@ class CSVActionHandler:
                     except Exception as e:
                         print(f"⚠️ xvfb setup failed: {e}")
                 
+                # Method 4: Try with minimal options (fallback)
                 if not driver_setup_success:
+                    try:
+                        minimal_options = Options()
+                        minimal_options.add_argument('--headless')
+                        minimal_options.add_argument('--no-sandbox')
+                        minimal_options.add_argument('--disable-dev-shm-usage')
+                        minimal_options.add_argument('--disable-gpu')
+                        minimal_options.add_argument('--window-size=1920,1080')
+                        if os.path.exists(chrome_bin):
+                            minimal_options.binary_location = chrome_bin
+                        self.driver = webdriver.Chrome(options=minimal_options)
+                        driver_setup_success = True
+                        print("✅ Chrome driver setup with minimal options")
+                    except Exception as e:
+                        print(f"⚠️ Minimal options setup failed: {e}")
+                
+                if not driver_setup_success:
+                    # Log system information for debugging
+                    import platform
+                    import subprocess
+                    print(f"❌ All Chrome driver setup methods failed")
+                    print(f"System: {platform.system()} {platform.release()}")
+                    print(f"Python: {platform.python_version()}")
+                    try:
+                        result = subprocess.run(['which', 'chromium'], capture_output=True, text=True)
+                        print(f"Chromium path: {result.stdout.strip()}")
+                    except:
+                        print("Chromium not found in PATH")
+                    try:
+                        result = subprocess.run(['which', 'chromedriver'], capture_output=True, text=True)
+                        print(f"ChromeDriver path: {result.stdout.strip()}")
+                    except:
+                        print("ChromeDriver not found in PATH")
                     raise Exception("All Chrome driver setup methods failed")
                 print(f"✅ Headless Chrome browser started successfully")
                 

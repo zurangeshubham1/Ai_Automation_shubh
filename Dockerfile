@@ -34,7 +34,24 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
     && rm -rf /var/lib/apt/lists/*
+
+# Create symlinks for Chrome
+RUN ln -sf /usr/bin/chromium /usr/bin/chrome
+RUN ln -sf /usr/bin/chromium /usr/bin/google-chrome
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -53,6 +70,8 @@ ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99
 ENV CHROME_BIN=/usr/bin/chromium
 ENV CHROME_PATH=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 
 # Expose port
 EXPOSE $PORT
