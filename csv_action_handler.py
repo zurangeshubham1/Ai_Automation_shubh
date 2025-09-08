@@ -141,6 +141,14 @@ class CSVActionHandler:
                 chrome_options.add_argument('--remote-debugging-port=9222')
                 chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 
+                # Set Chrome binary path for Railway/cloud environments
+                chrome_bin = os.environ.get('CHROME_BIN', '/usr/bin/chromium')
+                if os.path.exists(chrome_bin):
+                    chrome_options.binary_location = chrome_bin
+                    print(f"✅ Using Chrome binary: {chrome_bin}")
+                else:
+                    print(f"⚠️ Chrome binary not found at {chrome_bin}, using default")
+                
                 # Additional options for Railway/cloud deployment
                 chrome_options.add_argument('--disable-background-timer-throttling')
                 chrome_options.add_argument('--disable-backgrounding-occluded-windows')
