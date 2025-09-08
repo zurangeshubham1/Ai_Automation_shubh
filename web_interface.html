@@ -399,6 +399,35 @@
             border: 2px dashed #e2e8f0;
         }
 
+        .config-section {
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .status-value {
+            color: #2d3748;
+            font-family: monospace;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #f7fafc;
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -497,6 +526,29 @@
                     <label>Upload New CSV Script:</label>
                     <input type="file" class="form-control" id="csvUpload" accept=".csv" onchange="uploadScript()">
                 </div>
+            </div>
+        </div>
+
+        <!-- System Configuration -->
+        <div class="card">
+            <h2>⚙️ System Configuration</h2>
+            <div class="config-section">
+                <h3>🌐 Environment Status</h3>
+                <div id="environmentStatus">
+                    <div class="status-item">
+                        <span class="status-label">Environment:</span>
+                        <span class="status-value" id="envType">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Browser Support:</span>
+                        <span class="status-value" id="browserSupport">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Video Recording:</span>
+                        <span class="status-value" id="videoSupport">Loading...</span>
+                    </div>
+                </div>
+                <button class="btn" onclick="checkSystemStatus()">🔍 Check System Status</button>
             </div>
         </div>
 
@@ -1032,6 +1084,40 @@
         
         // Check for existing videos after a short delay
         setTimeout(checkExistingVideos, 1000);
+
+        // System status checking function
+        function checkSystemStatus() {
+            addLog('info', '🔍 Checking system status...');
+            
+            // Check environment type
+            const isCloud = window.location.hostname.includes('railway.app') || 
+                           window.location.hostname.includes('herokuapp.com') ||
+                           window.location.hostname.includes('vercel.app');
+            
+            document.getElementById('envType').textContent = isCloud ? '☁️ Cloud (Railway)' : '💻 Local';
+            document.getElementById('envType').style.color = isCloud ? '#3182ce' : '#38a169';
+            
+            // Check browser support
+            const hasChrome = navigator.userAgent.includes('Chrome');
+            document.getElementById('browserSupport').textContent = hasChrome ? '✅ Supported' : '⚠️ Limited';
+            document.getElementById('browserSupport').style.color = hasChrome ? '#38a169' : '#d69e2e';
+            
+            // Check video support
+            const hasVideoSupport = document.createElement('video').canPlayType('video/mp4') !== '';
+            document.getElementById('videoSupport').textContent = hasVideoSupport ? '✅ Supported' : '❌ Not Supported';
+            document.getElementById('videoSupport').style.color = hasVideoSupport ? '#38a169' : '#e53e3e';
+            
+            addLog('success', '✅ System status check completed');
+            
+            // Show additional info for cloud environment
+            if (isCloud) {
+                addLog('info', '☁️ Running in cloud environment - browser automation will be headless');
+                addLog('info', '📹 Video recording may be limited in cloud environment');
+            }
+        }
+
+        // Auto-check system status on page load
+        setTimeout(checkSystemStatus, 2000);
     </script>
 </body>
 </html>

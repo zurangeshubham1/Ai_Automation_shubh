@@ -1,0 +1,75 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+.ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development files
+start_visible_browser.py
+start_visible_browser.bat
+start_web_interface.bat
+start_web_interface.sh
+test_*.py
+*_test.py
+validate_video.py
+fix_video_recording.py
+simple_video_test.py
+test_video_recording.py
+test_visible_browser.py
+test_railway_deployment.py
+
+# Documentation
+*.md
+!README.md
+
+# Local videos and results
+videos/
+allure-results/
+screenshots/
+
+# Temporary files
+*.tmp
+*.temp
