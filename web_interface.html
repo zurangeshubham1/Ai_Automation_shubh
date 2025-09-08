@@ -527,37 +527,39 @@
             </div>
         </div>
 
-        <!-- Script Execution Reports Section -->
+        <!-- Video Recording Section -->
         <div class="video-section">
-            <h2>📊 Script Execution Reports</h2>
+            <h2>🎥 Video Recording & Playback</h2>
             
             <div class="video-controls">
                 <button class="btn" onclick="loadVideoList()">
-                    📁 Refresh Reports
+                    📁 Refresh Videos
                 </button>
                 <button class="btn btn-warning" onclick="clearOldVideos()">
-                    🗑️ Clear Old Reports
+                    🗑️ Clear Old Videos
                 </button>
             </div>
 
             <div class="video-container">
                 <div class="video-preview">
-                    <h3>📄 Report Viewer</h3>
+                    <h3>📹 Video Player</h3>
                     <div id="videoPreview" class="video-placeholder">
-                        Execution reports will appear here after script completion
+                        Videos will appear here after script execution
                     </div>
                     <div id="currentVideoPlayer" style="display: none;">
-                        <pre id="currentReport" style="background: #f5f5f5; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;"></pre>
+                        <video id="currentVideo" controls style="width: 100%; max-width: 400px;">
+                            Your browser does not support the video tag.
+                        </video>
                     </div>
                 </div>
 
                 <div>
-                    <h3>📂 Execution Reports</h3>
+                    <h3>📂 Recorded Videos</h3>
                     <div class="video-list" id="videoList">
                         <div class="video-item">
                             <div class="video-info">
-                                <div class="video-name">No reports generated yet</div>
-                                <div class="video-meta">Run scripts to see execution reports here</div>
+                                <div class="video-name">No videos recorded yet</div>
+                                <div class="video-meta">Run scripts to see videos here</div>
                             </div>
                         </div>
                     </div>
@@ -961,8 +963,8 @@
                 videoList.innerHTML = `
                     <div class="video-item">
                         <div class="video-info">
-                            <div class="video-name">No execution reports yet</div>
-                            <div class="video-meta">Run scripts to see execution reports here</div>
+                            <div class="video-name">No videos recorded yet</div>
+                            <div class="video-meta">Run scripts to see videos here</div>
                         </div>
                     </div>
                 `;
@@ -981,7 +983,7 @@
                     </div>
                     <div>
                         <button class="btn" onclick="playVideo('${video.name}')" style="margin-right: 5px;">
-                            👁️ View
+                            ▶️ Play
                         </button>
                         <button class="btn btn-success" onclick="downloadVideo('${video.name}')" style="margin-right: 5px;">
                             📥 Download
@@ -999,28 +1001,29 @@
             try {
                 const response = await fetch(`/api/video/${encodeURIComponent(filename)}`);
                 if (response.ok) {
-                    const text = await response.text();
+                    const blob = await response.blob();
+                    const videoUrl = URL.createObjectURL(blob);
                     
-                    const reportViewer = document.getElementById('currentReport');
+                    const videoPlayer = document.getElementById('currentVideo');
                     const videoPreview = document.getElementById('videoPreview');
                     const currentVideoPlayer = document.getElementById('currentVideoPlayer');
                     
-                    reportViewer.textContent = text;
+                    videoPlayer.src = videoUrl;
                     videoPreview.style.display = 'none';
                     currentVideoPlayer.style.display = 'block';
                     
-                    addLog('info', `📄 Viewing report: ${filename}`);
+                    addLog('info', `▶️ Playing video: ${filename}`);
                 } else {
-                    addLog('error', `❌ Failed to load report: ${filename}`);
+                    addLog('error', `❌ Failed to load video: ${filename}`);
                 }
             } catch (error) {
-                addLog('error', `❌ Error loading report: ${error.message}`);
+                addLog('error', `❌ Error playing video: ${error.message}`);
             }
         }
 
         async function downloadVideo(filename) {
             try {
-                addLog('info', `📥 Downloading report: ${filename}`);
+                addLog('info', `📥 Downloading video: ${filename}`);
                 
                 const response = await fetch(`/api/download-video/${encodeURIComponent(filename)}`);
                 if (response.ok) {
@@ -1035,12 +1038,12 @@
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
                     
-                    addLog('success', `✅ Report downloaded: ${filename}`);
+                    addLog('success', `✅ Video downloaded: ${filename}`);
                 } else {
-                    addLog('error', `❌ Failed to download report: ${filename}`);
+                    addLog('error', `❌ Failed to download video: ${filename}`);
                 }
             } catch (error) {
-                addLog('error', `❌ Error downloading report: ${error.message}`);
+                addLog('error', `❌ Error downloading video: ${error.message}`);
             }
         }
 

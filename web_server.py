@@ -62,13 +62,13 @@ def get_video_info(filepath):
         size = stat.st_size
         modified_time = datetime.fromtimestamp(stat.st_mtime)
         
-        # Format file size
+        # Format file size - prioritize MB for videos
         if size < 1024:
             size_str = f"{size} B"
         elif size < 1024 * 1024:
             size_str = f"{size / 1024:.1f} KB"
         else:
-            size_str = f"{size / (1024 * 1024):.1f} MB"
+            size_str = f"{size / (1024 * 1024):.2f} MB"
         
         return {
             'name': os.path.basename(filepath),
@@ -83,7 +83,7 @@ def get_video_info(filepath):
 def get_available_videos():
     """Get list of available video files"""
     videos = []
-    video_extensions = ['.webm', '.mp4', '.avi', '.mov', '.txt']
+    video_extensions = ['.webm', '.mp4', '.avi', '.mov']
     
     for ext in video_extensions:
         pattern = os.path.join(VIDEO_DIR, f"*{ext}")
@@ -507,8 +507,10 @@ def api_download_video(filename):
         filepath = os.path.join(VIDEO_DIR, filename)
         if os.path.exists(filepath):
             # Send file with appropriate content type
-            if filename.endswith('.txt'):
-                return send_file(filepath, as_attachment=True, download_name=filename, mimetype='text/plain')
+            if filename.endswith('.mp4'):
+                return send_file(filepath, as_attachment=True, download_name=filename, mimetype='video/mp4')
+            elif filename.endswith('.webm'):
+                return send_file(filepath, as_attachment=True, download_name=filename, mimetype='video/webm')
             else:
                 return send_file(filepath, as_attachment=True, download_name=filename)
         else:
