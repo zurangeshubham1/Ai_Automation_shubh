@@ -9,12 +9,13 @@ import subprocess
 import threading
 import time
 import glob
-from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import csv
 from csv_action_handler import CSVActionHandler
 import uuid
+import shutil
 
 app = Flask(__name__)
 CORS(app)
@@ -25,6 +26,11 @@ script_sessions = {}
 
 # Use the main CSVActionHandler class directly
 WebCSVHandler = CSVActionHandler
+
+# Video storage directory
+VIDEO_DIR = 'recorded_videos'
+if not os.path.exists(VIDEO_DIR):
+    os.makedirs(VIDEO_DIR)
 
 def get_available_scripts():
     """Get list of available CSV scripts"""
@@ -48,6 +54,49 @@ def get_available_scripts():
             print(f"Error reading {csv_file}: {e}")
     
     return scripts
+
+def get_video_info(filepath):
+    """Get video file information"""
+    try:
+        stat = os.stat(filepath)
+        size = stat.st_size
+        modified_time = datetime.fromtimestamp(stat.st_mtime)
+        
+        # Format file size
+        if size < 1024:
+            size_str = f"{size} B"
+        elif size < 1024 * 1024:
+            size_str = f"{size / 1024:.1f} KB"
+        else:
+            size_str = f"{size / (1024 * 1024):.1f} MB"
+        
+        return {
+            'name': os.path.basename(filepath),
+            'size': size_str,
+            'date': modified_time.strftime('%Y-%m-%d %H:%M'),
+            'duration': 'Unknown'  # Could be enhanced with video metadata
+        }
+    except Exception as e:
+        print(f"Error getting video info for {filepath}: {e}")
+        return None
+
+def get_available_videos():
+    """Get list of available video files"""
+    videos = []
+    video_extensions = ['.webm', '.mp4', '.avi', '.mov']
+    
+    for ext in video_extensions:
+        pattern = os.path.join(VIDEO_DIR, f"*{ext}")
+        video_files = glob.glob(pattern)
+        
+        for video_file in video_files:
+            video_info = get_video_info(video_file)
+            if video_info:
+                videos.append(video_info)
+    
+    # Sort by modification time (newest first)
+    videos.sort(key=lambda x: x['date'], reverse=True)
+    return videos
 
 @app.route('/')
 def index():
@@ -400,6 +449,82 @@ def api_cleanup():
         return jsonify({'success': True, 'cleaned': len(sessions_to_remove)})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+# Video Management API Endpoints
+@app.route('/api/videos')
+def api_videos():
+    """Get list of available videos"""
+    try:
+        videos = get_available_videos()
+        return jsonify({'success': True, 'videos': videos})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/save-video', methods=['POST'])
+def api_save_video():
+    """Save uploaded video file"""
+    try:
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'})
+        
+        video_file = request.files['video']
+        if video_file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"recording_{timestamp}_{video_file.filename}"
+        filepath = os.path.join(VIDEO_DIR, filename)
+        
+        # Save the file
+        video_file.save(filepath)
+        
+        return jsonify({'success': True, 'filename': filename, 'message': 'Video saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/video/<filename>')
+def api_get_video(filename):
+    """Serve video file"""
+    try:
+        filepath = os.path.join(VIDEO_DIR, filename)
+        if os.path.exists(filepath):
+            return send_file(filepath, as_attachment=False)
+        else:
+            return jsonify({'success': False, 'error': 'Video not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/delete-video/<filename>', methods=['DELETE'])
+def api_delete_video(filename):
+    """Delete video file"""
+    try:
+        filepath = os.path.join(VIDEO_DIR, filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'success': True, 'message': 'Video deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Video not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/clear-old-videos', methods=['DELETE'])
+def api_clear_old_videos():
+    """Clear videos older than 7 days"""
+    try:
+        cutoff_date = datetime.now() - timedelta(days=7)
+        deleted_count = 0
+        
+        for video_file in glob.glob(os.path.join(VIDEO_DIR, '*')):
+            if os.path.isfile(video_file):
+                file_time = datetime.fromtimestamp(os.path.getmtime(video_file))
+                if file_time < cutoff_date:
+                    os.remove(video_file)
+                    deleted_count += 1
+        
+        return jsonify({'success': True, 'deleted': deleted_count, 'message': f'Cleared {deleted_count} old videos'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("🚀 Starting AI Agent Web Server...")
