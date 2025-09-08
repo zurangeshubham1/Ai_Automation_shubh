@@ -565,6 +565,117 @@ def api_cleanup():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/video/<session_id>')
+def api_get_video(session_id):
+    """Get video information for a session"""
+    try:
+        if session_id in script_sessions:
+            session = script_sessions[session_id]
+            handler = session['handler']
+            video_info = handler.get_video_info()
+            return jsonify({'success': True, 'video': video_info})
+        else:
+            return jsonify({'success': False, 'error': 'Session not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/download-video/<session_id>')
+def api_download_video(session_id):
+    """Download video file for a session"""
+    try:
+        if session_id in script_sessions:
+            session = script_sessions[session_id]
+            handler = session['handler']
+            video_info = handler.get_video_info()
+            
+            if video_info['exists']:
+                return send_from_directory(
+                    os.path.dirname(video_info['path']),
+                    video_info['filename'],
+                    as_attachment=True,
+                    download_name=f"automation_{session_id}.mp4"
+                )
+            else:
+                return jsonify({'success': False, 'error': 'Video not found'})
+        else:
+            return jsonify({'success': False, 'error': 'Session not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/videos')
+def api_list_videos():
+    """List all available videos"""
+    try:
+        videos_dir = "videos"
+        if not os.path.exists(videos_dir):
+            return jsonify({'success': True, 'videos': []})
+        
+        videos = []
+        for filename in os.listdir(videos_dir):
+            if filename.endswith('.mp4'):
+                file_path = os.path.join(videos_dir, filename)
+                file_size = os.path.getsize(file_path)
+                file_time = os.path.getmtime(file_path)
+                
+                videos.append({
+                    'filename': filename,
+                    'size_mb': round(file_size / (1024 * 1024), 2),
+                    'created': datetime.fromtimestamp(file_time).isoformat(),
+                    'download_url': f'/api/download-video-file/{filename}',
+                    'stream_url': f'/api/stream-video-file/{filename}',
+                    'url': f'/api/stream-video-file/{filename}'  # For backward compatibility
+                })
+        
+        # Sort by creation time (newest first)
+        videos.sort(key=lambda x: x['created'], reverse=True)
+        
+        return jsonify({'success': True, 'videos': videos})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/stream-video-file/<filename>')
+def api_stream_video_file(filename):
+    """Stream a video file for in-browser playback"""
+    try:
+        videos_dir = "videos"
+        file_path = os.path.join(videos_dir, filename)
+        
+        if os.path.exists(file_path):
+            # Stream the video without forcing download
+            response = send_from_directory(
+                videos_dir,
+                filename,
+                as_attachment=False,
+                mimetype='video/mp4'
+            )
+            # Add headers for better video streaming
+            response.headers['Accept-Ranges'] = 'bytes'
+            response.headers['Cache-Control'] = 'no-cache'
+            return response
+        else:
+            return jsonify({'success': False, 'error': 'Video file not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/download-video-file/<filename>')
+def api_download_video_file(filename):
+    """Download a specific video file"""
+    try:
+        videos_dir = "videos"
+        file_path = os.path.join(videos_dir, filename)
+        
+        if os.path.exists(file_path):
+            return send_from_directory(
+                videos_dir,
+                filename,
+                as_attachment=True,
+                download_name=filename
+            )
+        else:
+            return jsonify({'success': False, 'error': 'Video file not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 if __name__ == '__main__':
     print("🚀 Starting AI Agent Web Server...")
     

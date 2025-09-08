@@ -299,6 +299,106 @@
             font-size: 0.9rem;
         }
 
+        /* Video Management Styles */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .video-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 150px;
+            background: #1a202c;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .video-info {
+            text-align: center;
+        }
+
+        .video-filename {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .video-details {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .video-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .video-actions .btn {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+
+        .no-videos {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            padding: 40px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 2px dashed #e2e8f0;
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -400,6 +500,22 @@
             </div>
         </div>
 
+        <!-- Video Management Section -->
+        <div class="card">
+            <h2>🎥 Video Recordings</h2>
+            
+            <div class="form-group">
+                <button class="btn" onclick="loadVideos()">🔄 Refresh Videos</button>
+                <button class="btn btn-success" onclick="downloadAllVideos()">⬇️ Download All</button>
+                <button class="btn btn-warning" onclick="clearOldVideos()">🗑️ Clear Old Videos</button>
+            </div>
+
+            <div class="video-grid" id="videoGrid">
+                <!-- Videos will be loaded here -->
+            </div>
+
+        </div>
+
         <!-- Execution Logs -->
         <div class="card">
             <h2>📊 Execution Logs & Progress</h2>
@@ -421,10 +537,12 @@
         let scripts = [];
         let runningScripts = new Map();
         let logs = [];
+        let videos = [];
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
             loadScripts();
+            loadVideos();
             updateStats();
             addLog('info', 'Dashboard initialized successfully');
             
@@ -765,6 +883,155 @@
                 logsContainer.removeChild(logsContainer.firstChild);
             }
         }
+
+        // Video Management Functions
+        async function loadVideos() {
+            addLog('info', '🎥 Loading video recordings...');
+            try {
+                const response = await fetch('/api/videos');
+                const result = await response.json();
+                
+                console.log('Video API response:', result); // Debug log
+                
+                if (result.success) {
+                    videos = result.videos || [];
+                    addLog('success', `✅ Loaded ${videos.length} video recordings`);
+                    console.log('Videos loaded:', videos); // Debug log
+                    displayVideos();
+                } else {
+                    addLog('error', `❌ Failed to load videos: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Failed to load videos: ${error.message}`);
+                console.error('Video loading error:', error); // Debug log
+            }
+        }
+
+        function displayVideos() {
+            const videoGrid = document.getElementById('videoGrid');
+            videoGrid.innerHTML = '';
+
+            if (videos.length === 0) {
+                videoGrid.innerHTML = `
+                    <div class="no-videos">
+                        🎬 No video recordings found. Run some scripts to create videos!
+                    </div>
+                `;
+                return;
+            }
+
+            videos.forEach((video, index) => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                videoCard.setAttribute('data-video-index', index);
+                videoCard.onclick = () => playVideo(video);
+                
+                const createdDate = new Date(video.created).toLocaleString();
+                
+                videoCard.innerHTML = `
+                    <div class="video-thumbnail">
+                        <div class="video-play-overlay">▶️</div>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-filename">${video.filename}</div>
+                        <div class="video-details">
+                            📁 ${video.size_mb} MB<br>
+                            📅 ${createdDate}
+                        </div>
+                        <div class="video-actions">
+                            <button class="btn" onclick="event.stopPropagation(); downloadVideo('${video.filename}')">
+                                ⬇️ Download
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                videoGrid.appendChild(videoCard);
+            });
+        }
+
+
+        function downloadVideo(filename) {
+            addLog('info', `⬇️ Downloading video: ${filename}`);
+            const downloadUrl = `/api/download-video-file/${filename}`;
+            
+            // Create temporary link and trigger download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            addLog('success', `✅ Download started: ${filename}`);
+        }
+
+        async function downloadAllVideos() {
+            if (videos.length === 0) {
+                addLog('warning', '⚠️ No videos to download');
+                return;
+            }
+            
+            addLog('info', `⬇️ Downloading ${videos.length} videos...`);
+            
+            for (const video of videos) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Delay between downloads
+                downloadVideo(video.filename);
+            }
+            
+            addLog('success', '✅ All videos download started');
+        }
+
+        async function clearOldVideos() {
+            if (videos.length === 0) {
+                addLog('warning', '⚠️ No videos to clear');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to clear all ${videos.length} video recordings?`)) {
+                return;
+            }
+            
+            addLog('info', '🗑️ Clearing old videos...');
+            
+            // This would require a new API endpoint to delete videos
+            // For now, just show a message
+            addLog('warning', '⚠️ Video deletion not implemented yet. Please delete manually from server.');
+        }
+
+        // Update video list when scripts complete
+        function checkForNewVideos() {
+            // Check for new videos every 30 seconds
+            setInterval(() => {
+                loadVideos();
+            }, 30000);
+        }
+
+
+        // Check for existing videos on page load
+        function checkExistingVideos() {
+            // Check if there are any videos in the videos directory
+            fetch('/api/videos')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.videos && result.videos.length > 0) {
+                        addLog('info', `📹 Found ${result.videos.length} existing video(s)`);
+                        videos = result.videos;
+                        displayVideos();
+                    } else {
+                        addLog('info', '📹 No existing videos found');
+                    }
+                })
+                .catch(error => {
+                    console.log('No videos API available yet');
+                });
+        }
+
+        // Start checking for new videos
+        checkForNewVideos();
+        
+        // Check for existing videos after a short delay
+        setTimeout(checkExistingVideos, 1000);
     </script>
 </body>
 </html>

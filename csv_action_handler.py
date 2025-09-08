@@ -17,6 +17,16 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 import allure
 from allure_commons.types import AttachmentType
+try:
+    import cv2
+    import numpy as np
+    VIDEO_RECORDING_AVAILABLE = True
+except ImportError:
+    VIDEO_RECORDING_AVAILABLE = False
+    print("⚠️ OpenCV not available - video recording disabled")
+
+import threading
+import queue
 
 class CSVActionHandler:
     """Handles actions from CSV file"""
@@ -26,14 +36,21 @@ class CSVActionHandler:
         self.wait = None
         self.test_results = []
         self.screenshots_dir = "allure-results/screenshots"
+        self.videos_dir = "videos"
         self.browser = browser
-        self.session_id = session_id
+        self.session_id = session_id or f"session_{int(time.time())}"
         self.progress = 0
         self.status = 'ready'
         self.current_action = ''
         self.logs = []
         self.completed_actions = 0
         self.total_actions = 0
+        
+        # Video recording setup
+        self.video_recorder = None
+        self.recording_started = False
+        self.video_path = None
+        
         self.ensure_directories()
     
     
@@ -41,6 +58,7 @@ class CSVActionHandler:
         """Ensure required directories exist"""
         os.makedirs("allure-results", exist_ok=True)
         os.makedirs(self.screenshots_dir, exist_ok=True)
+        os.makedirs(self.videos_dir, exist_ok=True)
         
     def setup_driver(self):
         """Setup browser driver based on selected browser"""
@@ -70,6 +88,9 @@ class CSVActionHandler:
             self.driver.implicitly_wait(10)
             self.wait = WebDriverWait(self.driver, 20)
             print(f"🌐 {self.browser.capitalize()} browser opened successfully!")
+            
+            # Initialize video recording
+            self._setup_video_recording()
             
         except Exception as e:
             print(f"❌ Failed to open browser: {e}")
@@ -207,8 +228,126 @@ class CSVActionHandler:
         self.driver = webdriver.Edge(service=service, options=options)
         self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
+    def _setup_video_recording(self):
+        """Setup video recording for the session"""
+        if not VIDEO_RECORDING_AVAILABLE:
+            print("⚠️ Video recording not available - OpenCV not installed")
+            self.recording_started = False
+            return
+            
+        try:
+            # Create video recorder
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            video_filename = f"automation_{self.session_id}_{timestamp}.mp4"
+            self.video_path = os.path.join(self.videos_dir, video_filename)
+            
+            # Initialize video writer with better codec
+            # Try different codecs for better compatibility
+            codecs_to_try = [
+                ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),
+                ('XVID', cv2.VideoWriter_fourcc(*'XVID')),
+                ('MJPG', cv2.VideoWriter_fourcc(*'MJPG')),
+                ('H264', cv2.VideoWriter_fourcc(*'H264'))
+            ]
+            
+            self.video_writer = None
+            for codec_name, fourcc in codecs_to_try:
+                try:
+                    self.video_writer = cv2.VideoWriter(
+                        self.video_path, 
+                        fourcc, 
+                        2,  # 2 FPS for reasonable file size
+                        (1920, 1080)
+                    )
+                    if self.video_writer.isOpened():
+                        print(f"🎥 Video recording started with {codec_name} codec: {self.video_path}")
+                        break
+                    else:
+                        self.video_writer.release()
+                        self.video_writer = None
+                except Exception as e:
+                    print(f"⚠️ Failed to initialize {codec_name} codec: {e}")
+                    continue
+            
+            if self.video_writer is None:
+                print("❌ Failed to initialize any video codec")
+                self.recording_started = False
+            else:
+                self.recording_started = True
+            
+        except Exception as e:
+            print(f"⚠️ Video recording setup failed: {e}")
+            self.recording_started = False
+    
+    def _capture_video_frame(self, action_name=""):
+        """Capture a frame for video recording"""
+        if not VIDEO_RECORDING_AVAILABLE or not self.recording_started or not self.driver or not self.video_writer:
+            return
+        
+        try:
+            # Take screenshot
+            screenshot = self.driver.get_screenshot_as_png()
+            
+            # Convert to OpenCV format
+            nparr = np.frombuffer(screenshot, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if frame is None:
+                print("⚠️ Failed to decode screenshot")
+                return
+            
+            # Resize frame to exact dimensions
+            frame = cv2.resize(frame, (1920, 1080))
+            
+            # Ensure frame is in correct format (BGR)
+            if len(frame.shape) == 3 and frame.shape[2] == 3:
+                # Add action text overlay
+                if action_name:
+                    cv2.putText(frame, f"Action: {action_name}", 
+                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                
+                # Add timestamp
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cv2.putText(frame, timestamp, 
+                           (10, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                
+                # Add URL
+                url = self.driver.current_url
+                if len(url) > 50:
+                    url = url[:47] + "..."
+                cv2.putText(frame, url, 
+                           (10, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                
+                # Write frame to video
+                self.video_writer.write(frame)
+            else:
+                print("⚠️ Invalid frame format")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to capture video frame: {e}")
+    
     def teardown_driver(self):
-        """Close browser"""
+        """Close browser and stop video recording"""
+        if self.recording_started and self.video_writer:
+            try:
+                self.video_writer.release()
+                self.video_writer = None
+                self.recording_started = False
+                
+                # Verify video file was created and has content
+                if os.path.exists(self.video_path):
+                    file_size = os.path.getsize(self.video_path)
+                    if file_size > 0:
+                        print(f"🎬 Video recording completed: {self.video_path} ({round(file_size / 1024, 2)} KB)")
+                    else:
+                        print(f"⚠️ Video file created but is empty: {self.video_path}")
+                        # Remove empty file
+                        os.remove(self.video_path)
+                else:
+                    print(f"⚠️ Video file was not created: {self.video_path}")
+            except Exception as e:
+                print(f"⚠️ Error closing video recording: {e}")
+        
         if self.driver:
             time.sleep(3)  # Keep browser open for 3 seconds
             self.driver.quit()
@@ -221,6 +360,17 @@ class CSVActionHandler:
             screenshot_path = os.path.join(self.screenshots_dir, f"{step_name}_{timestamp}.png")
             self.driver.save_screenshot(screenshot_path)
             allure.attach.file(screenshot_path, name=step_name, attachment_type=AttachmentType.PNG)
+            
+            # Log screenshot info for live monitoring
+            page_info = {
+                'url': self.driver.current_url,
+                'title': self.driver.title,
+                'timestamp': timestamp,
+                'action': step_name,
+                'screenshot_path': screenshot_path
+            }
+            self.logs.append(f"📸 Screenshot taken: {step_name} - {self.driver.current_url}")
+            
             return screenshot_path
         return None
     
@@ -298,6 +448,9 @@ class CSVActionHandler:
         
         # Take screenshot before action
         self.take_screenshot(f"before_{step_name}")
+        
+        # Capture video frame before action
+        self._capture_video_frame(f"Before: {action}")
         
         try:
             if action.lower() == 'open_url':
@@ -413,6 +566,9 @@ class CSVActionHandler:
             # Take screenshot after successful action
             self.take_screenshot(f"after_{step_name}")
             
+            # Capture video frame after action
+            self._capture_video_frame(f"After: {action}")
+            
             # Update progress
             if hasattr(self, 'total_actions') and self.total_actions > 0:
                 self.completed_actions += 1
@@ -424,6 +580,8 @@ class CSVActionHandler:
             print(f"   ❌ Failed: {e}")
             # Take screenshot on failure
             self.take_screenshot(f"failed_{step_name}")
+            # Capture error frame
+            self._capture_video_frame(f"Error: {action}")
             self.status = 'error'
             return False
     
@@ -527,6 +685,25 @@ class CSVActionHandler:
                 
                 # Generate Allure report
                 self.generate_allure_report(test_name, actions, True)
+                
+                # Log video information
+                if self.video_path and os.path.exists(self.video_path):
+                    file_size = os.path.getsize(self.video_path)
+                    self.logs.append(f"🎬 Video recorded: {self.video_path} ({round(file_size / (1024 * 1024), 2)} MB)")
+    
+    def get_video_info(self):
+        """Get information about the recorded video"""
+        if self.video_path and os.path.exists(self.video_path):
+            file_size = os.path.getsize(self.video_path)
+            return {
+                'path': self.video_path,
+                'filename': os.path.basename(self.video_path),
+                'size': file_size,
+                'size_mb': round(file_size / (1024 * 1024), 2),
+                'exists': True,
+                'session_id': self.session_id
+            }
+        return {'exists': False}
     
     def create_sample_csv(self, test_name):
         """Create a sample CSV file for the user"""
