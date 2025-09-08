@@ -403,7 +403,11 @@ def api_cleanup():
 
 if __name__ == '__main__':
     print("🚀 Starting AI Agent Web Server...")
-    print("📱 Dashboard will be available at: http://localhost:5000")
+    
+    # Get port from environment variable (Railway) or default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    
+    print(f"📱 Dashboard will be available at: http://localhost:{port}")
     print("🔧 Make sure to install dependencies first!")
     
     # Start cleanup thread
@@ -419,4 +423,6 @@ if __name__ == '__main__':
     cleanup.daemon = True
     cleanup.start()
     
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    # Use debug=False for production deployment
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode, threaded=True)
