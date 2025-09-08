@@ -183,8 +183,10 @@ def api_run_script():
         data = request.get_json()
         script_name = data.get('script')
         browser = data.get('browser', 'chrome')
+        auto_record = data.get('autoRecord', True)
         
         print(f"DEBUG: Attempting to run script: {script_name}")
+        print(f"DEBUG: Auto-record enabled: {auto_record}")
         print(f"DEBUG: Script exists: {os.path.exists(script_name) if script_name else 'No script name'}")
         print(f"DEBUG: Current directory: {os.getcwd()}")
         print(f"DEBUG: Files in directory: {os.listdir('.')}")
@@ -195,6 +197,9 @@ def api_run_script():
         # Create session
         session_id = str(uuid.uuid4())
         handler = WebCSVHandler(browser, session_id)
+        
+        # Set auto-recording preference
+        handler.auto_record_enabled = auto_record
         
         # Store session
         script_sessions[session_id] = {
@@ -490,6 +495,18 @@ def api_get_video(filename):
         filepath = os.path.join(VIDEO_DIR, filename)
         if os.path.exists(filepath):
             return send_file(filepath, as_attachment=False)
+        else:
+            return jsonify({'success': False, 'error': 'Video not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/download-video/<filename>')
+def api_download_video(filename):
+    """Download video file"""
+    try:
+        filepath = os.path.join(VIDEO_DIR, filename)
+        if os.path.exists(filepath):
+            return send_file(filepath, as_attachment=True, download_name=filename)
         else:
             return jsonify({'success': False, 'error': 'Video not found'}), 404
     except Exception as e:

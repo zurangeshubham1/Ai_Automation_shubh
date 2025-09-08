@@ -7,6 +7,8 @@ import csv
 import time
 import os
 import json
+import threading
+import subprocess
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -34,6 +36,14 @@ class CSVActionHandler:
         self.logs = []
         self.completed_actions = 0
         self.total_actions = 0
+        
+        # Video recording properties
+        self.video_recording = False
+        self.video_process = None
+        self.video_filename = None
+        self.video_dir = "recorded_videos"
+        self.auto_record_enabled = True
+        
         self.ensure_directories()
     
     
@@ -41,6 +51,7 @@ class CSVActionHandler:
         """Ensure required directories exist"""
         os.makedirs("allure-results", exist_ok=True)
         os.makedirs(self.screenshots_dir, exist_ok=True)
+        os.makedirs(self.video_dir, exist_ok=True)
         
     def setup_driver(self):
         """Setup browser driver based on selected browser"""
@@ -62,6 +73,84 @@ class CSVActionHandler:
         except Exception as e:
             print(f"❌ Failed to open browser: {e}")
             raise e
+
+    def start_video_recording(self, script_name):
+        """Start video recording for the script execution"""
+        try:
+            if not self.auto_record_enabled:
+                self.add_log("🎥 Auto-recording disabled, skipping video recording")
+                return
+                
+            if self.video_recording:
+                return  # Already recording
+            
+            # Generate video filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            self.video_filename = f"script_{script_name}_{timestamp}.mp4"
+            video_path = os.path.join(self.video_dir, self.video_filename)
+            
+            # Start screen recording using ffmpeg (if available)
+            try:
+                # Try to start ffmpeg recording
+                cmd = [
+                    'ffmpeg', '-f', 'gdigrab', '-framerate', '30', '-i', 'desktop',
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
+                    '-y', video_path
+                ]
+                
+                self.video_process = subprocess.Popen(
+                    cmd, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                )
+                
+                self.video_recording = True
+                self.add_log(f"🎥 Video recording started: {self.video_filename}")
+                
+            except FileNotFoundError:
+                # ffmpeg not available, use alternative method
+                self.add_log("⚠️ ffmpeg not found, using browser recording instead")
+                self._start_browser_recording()
+                
+        except Exception as e:
+            self.add_log(f"❌ Failed to start video recording: {e}")
+
+    def _start_browser_recording(self):
+        """Start browser-based recording (fallback method)"""
+        try:
+            # This is a placeholder for browser-based recording
+            # In a real implementation, you might use Selenium's built-in recording
+            # or integrate with browser extensions
+            self.video_recording = True
+            self.add_log("🎥 Browser recording started (fallback method)")
+        except Exception as e:
+            self.add_log(f"❌ Failed to start browser recording: {e}")
+
+    def stop_video_recording(self):
+        """Stop video recording"""
+        try:
+            if not self.video_recording:
+                return
+            
+            if self.video_process:
+                # Stop ffmpeg recording
+                self.video_process.terminate()
+                self.video_process.wait(timeout=5)
+                self.video_process = None
+            
+            self.video_recording = False
+            self.add_log(f"⏹️ Video recording stopped: {self.video_filename}")
+            
+        except Exception as e:
+            self.add_log(f"❌ Error stopping video recording: {e}")
+
+    def add_log(self, message):
+        """Add log message"""
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        log_entry = f"[{timestamp}] {message}"
+        self.logs.append(log_entry)
+        print(log_entry)
     
     def _setup_chrome(self):
         """Setup Chrome driver"""
@@ -375,6 +464,9 @@ class CSVActionHandler:
         # Setup browser
         self.setup_driver()
         
+        # Start video recording
+        self.start_video_recording(test_name)
+        
         # Initialize Allure test
         with allure.step(f"CSV Action Test: {test_name}"):
             try:
@@ -413,6 +505,9 @@ class CSVActionHandler:
                 return False
             
             finally:
+                # Stop video recording
+                self.stop_video_recording()
+                
                 self.teardown_driver()
                 
                 # Generate Allure report

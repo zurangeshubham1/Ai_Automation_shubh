@@ -508,6 +508,13 @@
                 </div>
 
                 <div class="form-group">
+                    <label style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <input type="checkbox" id="autoRecordCheckbox" checked style="margin-right: 8px;">
+                        <span>🎥 Auto-record videos when running scripts</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
                     <button class="btn" onclick="refreshScripts()">🔄 Refresh Scripts</button>
                     <button class="btn btn-success" onclick="runSelectedScripts()">▶️ Run Selected</button>
                     <button class="btn btn-danger" onclick="stopAllScripts()">⏹️ Stop All</button>
@@ -762,13 +769,20 @@
         async function runScript(scriptName) {
             addLog('info', `🚀 Starting script: ${scriptName}`);
             
+            // Check if auto-recording is enabled
+            const autoRecord = document.getElementById('autoRecordCheckbox').checked;
+            if (autoRecord) {
+                addLog('info', '🎥 Auto-recording enabled for this script');
+            }
+            
             try {
                 const response = await fetch('/api/run-script', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         script: scriptName, 
-                        browser: selectedBrowser 
+                        browser: selectedBrowser,
+                        autoRecord: autoRecord
                     })
                 });
 
@@ -1090,6 +1104,9 @@
                         <button class="btn" onclick="playVideo('${video.name}')" style="margin-right: 5px;">
                             ▶️ Play
                         </button>
+                        <button class="btn btn-success" onclick="downloadVideo('${video.name}')" style="margin-right: 5px;">
+                            📥 Download
+                        </button>
                         <button class="btn btn-danger" onclick="deleteVideo('${video.name}')">
                             🗑️ Delete
                         </button>
@@ -1120,6 +1137,32 @@
                 }
             } catch (error) {
                 addLog('error', `❌ Error playing video: ${error.message}`);
+            }
+        }
+
+        async function downloadVideo(filename) {
+            try {
+                addLog('info', `📥 Downloading video: ${filename}`);
+                
+                const response = await fetch(`/api/download-video/${encodeURIComponent(filename)}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    addLog('success', `✅ Video downloaded: ${filename}`);
+                } else {
+                    addLog('error', `❌ Failed to download video: ${filename}`);
+                }
+            } catch (error) {
+                addLog('error', `❌ Error downloading video: ${error.message}`);
             }
         }
 
