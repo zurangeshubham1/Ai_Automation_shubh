@@ -83,7 +83,7 @@ def get_video_info(filepath):
 def get_available_videos():
     """Get list of available video files"""
     videos = []
-    video_extensions = ['.webm', '.mp4', '.avi', '.mov']
+    video_extensions = ['.webm', '.mp4', '.avi', '.mov', '.txt']
     
     for ext in video_extensions:
         pattern = os.path.join(VIDEO_DIR, f"*{ext}")
@@ -506,14 +506,13 @@ def api_download_video(filename):
     try:
         filepath = os.path.join(VIDEO_DIR, filename)
         if os.path.exists(filepath):
-            # Check if it's a text file (our fallback recording)
-            if filename.endswith('.mp4') and os.path.getsize(filepath) < 1024:
-                # It's likely a text file, send as text
-                return send_file(filepath, as_attachment=True, download_name=filename.replace('.mp4', '.txt'))
+            # Send file with appropriate content type
+            if filename.endswith('.txt'):
+                return send_file(filepath, as_attachment=True, download_name=filename, mimetype='text/plain')
             else:
                 return send_file(filepath, as_attachment=True, download_name=filename)
         else:
-            return jsonify({'success': False, 'error': 'Video not found'}), 404
+            return jsonify({'success': False, 'error': 'File not found'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -86,7 +86,7 @@ class CSVActionHandler:
             
             # Generate video filename
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            self.video_filename = f"script_{script_name}_{timestamp}.mp4"
+            self.video_filename = f"script_{script_name}_{timestamp}.txt"
             video_path = os.path.join(self.video_dir, self.video_filename)
             
             # Start screen recording using ffmpeg (if available)
@@ -138,9 +138,8 @@ class CSVActionHandler:
                 
             video_path = os.path.join(self.video_dir, self.video_filename)
             
-            # Create a simple text file as placeholder for now
-            # In a real implementation, this would be an actual video file
-            with open(video_path.replace('.mp4', '.txt'), 'w') as f:
+            # Create a script execution report file
+            with open(video_path, 'w') as f:
                 f.write(f"Script Execution Video\n")
                 f.write(f"Script: {self.video_filename}\n")
                 f.write(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -190,11 +189,8 @@ class CSVActionHandler:
                     f.write(f"Actions Completed: {self.completed_actions}/{self.total_actions}\n")
                     f.write(f"Final Status: {self.status}\n")
                 
-                # Rename to .mp4 for consistency (even though it's a text file)
-                final_video_path = video_path
-                if os.path.exists(metadata_file):
-                    os.rename(metadata_file, final_video_path)
-                    self.add_log(f"📁 Video file finalized: {self.video_filename}")
+                # File is already in the correct location with .txt extension
+                self.add_log(f"📁 Script execution report finalized: {self.video_filename}")
             
         except Exception as e:
             self.add_log(f"❌ Failed to finalize video file: {e}")
