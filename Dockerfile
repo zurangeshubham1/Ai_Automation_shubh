@@ -31,22 +31,10 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxi6 \
     libxrender1 \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
     libsm6 \
     libx11-6 \
     libx11-xcb1 \
     libxcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
-    libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlinks for Chrome
@@ -76,5 +64,15 @@ ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 # Expose port
 EXPOSE $PORT
 
+# Create startup script
+RUN echo '#!/bin/bash\n\
+# Start xvfb in background\n\
+Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &\n\
+# Wait a moment for xvfb to start\n\
+sleep 2\n\
+# Start the application\n\
+exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120' > /app/start.sh && \
+    chmod +x /app/start.sh
+
 # Start command
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+CMD ["/app/start.sh"]
