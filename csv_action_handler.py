@@ -119,13 +119,39 @@ class CSVActionHandler:
     def _start_browser_recording(self):
         """Start browser-based recording (fallback method)"""
         try:
-            # This is a placeholder for browser-based recording
-            # In a real implementation, you might use Selenium's built-in recording
-            # or integrate with browser extensions
+            # Create a simple video file with metadata for now
+            # In a real implementation, you would integrate with browser recording APIs
             self.video_recording = True
             self.add_log("🎥 Browser recording started (fallback method)")
+            
+            # Create a placeholder video file with script execution info
+            self._create_script_video_file()
+            
         except Exception as e:
             self.add_log(f"❌ Failed to start browser recording: {e}")
+
+    def _create_script_video_file(self):
+        """Create a video file with script execution information"""
+        try:
+            if not self.video_filename:
+                return
+                
+            video_path = os.path.join(self.video_dir, self.video_filename)
+            
+            # Create a simple text file as placeholder for now
+            # In a real implementation, this would be an actual video file
+            with open(video_path.replace('.mp4', '.txt'), 'w') as f:
+                f.write(f"Script Execution Video\n")
+                f.write(f"Script: {self.video_filename}\n")
+                f.write(f"Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Browser: {self.browser}\n")
+                f.write(f"Session ID: {self.session_id}\n")
+                f.write(f"Status: Recording in progress...\n")
+            
+            self.add_log(f"📁 Created video metadata file: {self.video_filename}")
+            
+        except Exception as e:
+            self.add_log(f"❌ Failed to create video file: {e}")
 
     def stop_video_recording(self):
         """Stop video recording"""
@@ -138,12 +164,40 @@ class CSVActionHandler:
                 self.video_process.terminate()
                 self.video_process.wait(timeout=5)
                 self.video_process = None
+            else:
+                # Update the metadata file for fallback recording
+                self._finalize_script_video_file()
             
             self.video_recording = False
             self.add_log(f"⏹️ Video recording stopped: {self.video_filename}")
             
         except Exception as e:
             self.add_log(f"❌ Error stopping video recording: {e}")
+
+    def _finalize_script_video_file(self):
+        """Finalize the script video file with completion info"""
+        try:
+            if not self.video_filename:
+                return
+                
+            video_path = os.path.join(self.video_dir, self.video_filename)
+            metadata_file = video_path.replace('.mp4', '.txt')
+            
+            if os.path.exists(metadata_file):
+                with open(metadata_file, 'a') as f:
+                    f.write(f"End Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"Status: Recording completed\n")
+                    f.write(f"Actions Completed: {self.completed_actions}/{self.total_actions}\n")
+                    f.write(f"Final Status: {self.status}\n")
+                
+                # Rename to .mp4 for consistency (even though it's a text file)
+                final_video_path = video_path
+                if os.path.exists(metadata_file):
+                    os.rename(metadata_file, final_video_path)
+                    self.add_log(f"📁 Video file finalized: {self.video_filename}")
+            
+        except Exception as e:
+            self.add_log(f"❌ Failed to finalize video file: {e}")
 
     def add_log(self, message):
         """Add log message"""

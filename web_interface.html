@@ -532,12 +532,6 @@
             <h2>🎥 Video Recording & Playback</h2>
             
             <div class="video-controls">
-                <button class="btn btn-success" onclick="startVideoRecording()" id="startRecordingBtn">
-                    🔴 Start Recording
-                </button>
-                <button class="btn btn-danger" onclick="stopVideoRecording()" id="stopRecordingBtn" disabled>
-                    ⏹️ Stop Recording
-                </button>
                 <button class="btn" onclick="loadVideoList()">
                     📁 Refresh Videos
                 </button>
@@ -546,17 +540,11 @@
                 </button>
             </div>
 
-            <div id="recordingStatus" class="recording-status" style="display: none;">
-                <span class="recording-indicator"></span>
-                <strong>Recording in progress...</strong>
-                <span id="recordingTime">00:00</span>
-            </div>
-
             <div class="video-container">
                 <div class="video-preview">
-                    <h3>📹 Live Preview</h3>
+                    <h3>📹 Video Player</h3>
                     <div id="videoPreview" class="video-placeholder">
-                        No video preview available
+                        Videos will appear here after script execution
                     </div>
                     <div id="currentVideoPlayer" style="display: none;">
                         <video id="currentVideo" controls style="width: 100%; max-width: 400px;">
@@ -601,12 +589,7 @@
         let runningScripts = new Map();
         let logs = [];
         
-        // Video recording variables
-        let mediaRecorder = null;
-        let recordedChunks = [];
-        let recordingStartTime = null;
-        let recordingInterval = null;
-        let isRecording = false;
+        // Video management variables
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
@@ -894,6 +877,14 @@
                         updateScriptStatus(scriptName, progress.status);
                         addLog(progress.status === 'completed' ? 'success' : 'error', 
                                `📊 Script ${progress.status}: ${scriptName}`);
+                        
+                        // Refresh video list when script completes
+                        if (progress.status === 'completed') {
+                            setTimeout(() => {
+                                loadVideoList();
+                                addLog('info', '📁 Refreshing video list...');
+                            }, 2000);
+                        }
                     }
                 } catch (error) {
                     clearInterval(interval);
@@ -946,117 +937,7 @@
             }
         }
 
-        // Video Recording Functions
-        async function startVideoRecording() {
-            try {
-                addLog('info', '🎥 Starting video recording...');
-                
-                // Request screen capture
-                const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        mediaSource: 'screen',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                        frameRate: { ideal: 30 }
-                    },
-                    audio: true
-                });
-
-                // Set up media recorder
-                mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm;codecs=vp9'
-                });
-
-                recordedChunks = [];
-
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-
-                mediaRecorder.onstop = () => {
-                    saveVideoRecording();
-                };
-
-                // Start recording
-                mediaRecorder.start(1000); // Record in 1-second chunks
-                isRecording = true;
-                recordingStartTime = Date.now();
-
-                // Update UI
-                document.getElementById('startRecordingBtn').disabled = true;
-                document.getElementById('stopRecordingBtn').disabled = false;
-                document.getElementById('recordingStatus').style.display = 'flex';
-                
-                // Start recording timer
-                recordingInterval = setInterval(updateRecordingTime, 1000);
-                
-                addLog('success', '✅ Video recording started');
-
-            } catch (error) {
-                addLog('error', `❌ Failed to start recording: ${error.message}`);
-                console.error('Recording error:', error);
-            }
-        }
-
-        function stopVideoRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                // Update UI
-                document.getElementById('startRecordingBtn').disabled = false;
-                document.getElementById('stopRecordingBtn').disabled = true;
-                document.getElementById('recordingStatus').style.display = 'none';
-                
-                // Stop recording timer
-                if (recordingInterval) {
-                    clearInterval(recordingInterval);
-                    recordingInterval = null;
-                }
-                
-                addLog('info', '⏹️ Video recording stopped');
-            }
-        }
-
-        function updateRecordingTime() {
-            if (recordingStartTime) {
-                const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-                const minutes = Math.floor(elapsed / 60);
-                const seconds = elapsed % 60;
-                document.getElementById('recordingTime').textContent = 
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-
-        async function saveVideoRecording() {
-            if (recordedChunks.length === 0) {
-                addLog('warning', '⚠️ No video data to save');
-                return;
-            }
-
-            try {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const formData = new FormData();
-                formData.append('video', blob, `recording_${Date.now()}.webm`);
-
-                const response = await fetch('/api/save-video', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    addLog('success', `✅ Video saved: ${result.filename}`);
-                    loadVideoList(); // Refresh video list
-                } else {
-                    addLog('error', '❌ Failed to save video');
-                }
-            } catch (error) {
-                addLog('error', `❌ Error saving video: ${error.message}`);
-            }
-        }
+        // Video Management Functions
 
         async function loadVideoList() {
             try {

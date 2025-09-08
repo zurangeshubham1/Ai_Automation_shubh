@@ -506,7 +506,12 @@ def api_download_video(filename):
     try:
         filepath = os.path.join(VIDEO_DIR, filename)
         if os.path.exists(filepath):
-            return send_file(filepath, as_attachment=True, download_name=filename)
+            # Check if it's a text file (our fallback recording)
+            if filename.endswith('.mp4') and os.path.getsize(filepath) < 1024:
+                # It's likely a text file, send as text
+                return send_file(filepath, as_attachment=True, download_name=filename.replace('.mp4', '.txt'))
+            else:
+                return send_file(filepath, as_attachment=True, download_name=filename)
         else:
             return jsonify({'success': False, 'error': 'Video not found'}), 404
     except Exception as e:

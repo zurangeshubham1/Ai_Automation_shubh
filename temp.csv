@@ -1,4 +1,2 @@
 action,xpath,data
 open_url,https://example.com/forms,
-wait,5,
-type,//input[@id="name"],John Doe

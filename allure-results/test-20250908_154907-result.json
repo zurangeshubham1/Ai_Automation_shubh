@@ -1,0 +1,32 @@
+{
+  "uuid": "test-20250908_154907",
+  "name": "temp",
+  "fullName": "CSV Action Test: temp",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1757326747059,
+  "stop": 1757326747059,
+  "steps": [
+    {
+      "name": "Step 1: open_url on https://example.com/forms",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757326747059,
+      "stop": 1757326747059
+    },
+    {
+      "name": "Step 2: wait on 5",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757326747059,
+      "stop": 1757326747059
+    },
+    {
+      "name": "Step 3: type on //input[@id=\"name\"]",
+      "status": "failed",
+      "stage": "finished",
+      "start": 1757326747059,
+      "stop": 1757326747059
+    }
+  ]
+}
