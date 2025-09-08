@@ -1,0 +1,18 @@
+{
+  "uuid": "test-20250908_164651",
+  "name": "temp",
+  "fullName": "CSV Action Test: temp",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1757330211781,
+  "stop": 1757330211781,
+  "steps": [
+    {
+      "name": "Step 1: open_url on https://example.com/forms",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757330211781,
+      "stop": 1757330211781
+    }
+  ]
+}

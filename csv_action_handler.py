@@ -310,10 +310,11 @@ class CSVActionHandler:
                 
                 # Get browser screenshots if available
                 screenshots = getattr(self, 'screenshots', [])
+                self.add_log(f"📊 Found {len(screenshots)} screenshots for video creation")
                 
                 if screenshots:
                     # Use actual screenshots
-                    for screenshot_data in screenshots:
+                    for i, screenshot_data in enumerate(screenshots):
                         try:
                             # Convert base64 screenshot to OpenCV frame
                             if isinstance(screenshot_data, str):
@@ -329,10 +330,16 @@ class CSVActionHandler:
                                 # Add text overlay
                                 cv2.putText(frame, f'Script: {self.video_filename}', (50, 50), 
                                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                cv2.putText(frame, f'Screenshot {i+1}/{len(screenshots)}', (50, 100), 
+                                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                                 
-                                out.write(frame)
+                                # Write multiple frames for each screenshot to make video longer
+                                for _ in range(10):  # 1 second at 10 fps per screenshot
+                                    out.write(frame)
+                                
+                                self.add_log(f"📸 Processed screenshot {i+1}/{len(screenshots)}")
                         except Exception as e:
-                            self.add_log(f"⚠️ Failed to process screenshot: {e}")
+                            self.add_log(f"⚠️ Failed to process screenshot {i+1}: {e}")
                             continue
                 else:
                     # Fallback: create frames with browser simulation
@@ -368,6 +375,19 @@ class CSVActionHandler:
                 out.release()
                 self.add_log(f"📁 Created visual video file: {self.video_filename}")
                 
+                # Debug: Save a sample screenshot to file for verification
+                if screenshots:
+                    try:
+                        import base64
+                        sample_screenshot = screenshots[0]
+                        img_data = base64.b64decode(sample_screenshot)
+                        debug_path = os.path.join(self.video_dir, f"debug_screenshot_{self.video_filename.replace('.mp4', '.png')}")
+                        with open(debug_path, 'wb') as f:
+                            f.write(img_data)
+                        self.add_log(f"🔍 Debug screenshot saved: {debug_path}")
+                    except Exception as e:
+                        self.add_log(f"⚠️ Failed to save debug screenshot: {e}")
+                
             except ImportError:
                 # Fallback: create a simple MP4 file
                 import struct
@@ -399,7 +419,7 @@ class CSVActionHandler:
                     self.screenshots = []
                 self.screenshots.append(screenshot)
                 
-                self.add_log("📸 Browser screenshot captured")
+                self.add_log(f"📸 Browser screenshot captured (total: {len(self.screenshots)})")
                 return screenshot
         except Exception as e:
             self.add_log(f"⚠️ Failed to capture screenshot: {e}")
