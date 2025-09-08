@@ -1,9 +1,0 @@
-action,xpath,data
-open_url,https://httpbin.org/forms/post,
-wait,3,
-take_screenshot,visible_browser_test,
-type,//input[@name="custname"],Browser is Working!
-take_screenshot,after_typing,
-wait,2,
-verify,text=Customer name,
-take_screenshot,verification_complete,

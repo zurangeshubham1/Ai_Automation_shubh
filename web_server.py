@@ -54,11 +54,6 @@ def index():
     """Serve the main dashboard"""
     return send_from_directory('.', 'web_interface.html')
 
-@app.route('/health')
-def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'message': 'AI Agent is running!'})
-
 @app.route('/api/scripts')
 def api_scripts():
     """Get available scripts"""
@@ -165,68 +160,10 @@ def api_run_script():
         def run_script():
             try:
                 print(f"DEBUG: Starting script execution for {script_name}")
-                
-                # Check if running in cloud environment
-                import os
-                
-                # Check if user explicitly wants visible browser mode
-                if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
-                    print(f"DEBUG: FORCE_VISIBLE_BROWSER detected - using visible browser mode")
-                    # Run normally for local environment
-                    handler.run_actions_from_csv(script_name)
-                    script_sessions[session_id]['status'] = handler.status
-                    script_sessions[session_id]['end_time'] = datetime.now()
-                    print(f"DEBUG: Script {script_name} completed with visible browser, status: {handler.status}")
-                    return
-                
-                cloud_indicators = [
-                    'RAILWAY_ENVIRONMENT' in os.environ,
-                    'RENDER' in os.environ,
-                    'HEROKU' in os.environ,
-                    'VERCEL' in os.environ,
-                    'NETLIFY' in os.environ,
-                    os.path.exists('/.dockerenv'),
-                    'DISPLAY' not in os.environ,
-                ]
-                
-                if any(cloud_indicators):
-                    print(f"DEBUG: Cloud environment detected - running with headless browser")
-                    # Run with headless browser in cloud
-                    try:
-                        handler.run_actions_from_csv(script_name)
-                        script_sessions[session_id]['status'] = handler.status
-                        script_sessions[session_id]['end_time'] = datetime.now()
-                        print(f"DEBUG: Script {script_name} completed with headless browser, status: {handler.status}")
-                    except Exception as e:
-                        print(f"DEBUG: Headless browser failed, falling back to simulation: {str(e)}")
-                        # Fallback to simulation if headless browser fails
-                        handler.status = 'running'
-                        handler.progress = 0
-                        handler.completed_actions = 0
-                        
-                        # Read CSV to get action count
-                        actions = handler.read_csv_actions(script_name)
-                        handler.total_actions = len(actions)
-                        
-                        # Simulate progress
-                        for i, action in enumerate(actions):
-                            handler.completed_actions = i + 1
-                            handler.progress = int((handler.completed_actions / handler.total_actions) * 100)
-                            handler.logs.append(f"Simulated: {action['action']} on {action['xpath']}")
-                            time.sleep(0.5)  # Simulate action time
-                        
-                        handler.status = 'completed'
-                        handler.progress = 100
-                        script_sessions[session_id]['status'] = 'completed'
-                        script_sessions[session_id]['end_time'] = datetime.now()
-                        print(f"DEBUG: Script {script_name} completed (simulated fallback)")
-                else:
-                    # Run normally for local environment
-                    handler.run_actions_from_csv(script_name)
-                    script_sessions[session_id]['status'] = handler.status
-                    script_sessions[session_id]['end_time'] = datetime.now()
-                    print(f"DEBUG: Script {script_name} completed with status: {handler.status}")
-                    
+                handler.run_actions_from_csv(script_name)
+                script_sessions[session_id]['status'] = handler.status
+                script_sessions[session_id]['end_time'] = datetime.now()
+                print(f"DEBUG: Script {script_name} completed with status: {handler.status}")
             except Exception as e:
                 print(f"DEBUG: Script {script_name} failed with error: {str(e)}")
                 script_sessions[session_id]['status'] = 'error'
@@ -406,108 +343,12 @@ def api_test_browser():
         
         print(f"DEBUG: Testing {browser} browser...")
         
-        # Check if running in cloud environment first
-        import os
-        
-        # Check if user explicitly wants visible browser mode
-        if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
-            print(f"DEBUG: FORCE_VISIBLE_BROWSER detected - testing visible browser")
-            # Create a test handler for local testing
-            test_handler = WebCSVHandler(browser)
-            
-            try:
-                # Try to setup the driver
-                test_handler.setup_driver()
-                
-                if test_handler.driver is None:
-                    return jsonify({
-                        'success': False, 
-                        'message': f'{browser} browser test failed - driver not available',
-                        'title': 'Browser Test Failed',
-                        'cloud_mode': False
-                    })
-                
-                # Test basic functionality
-                test_handler.driver.get("https://www.google.com")
-                title = test_handler.driver.title
-                
-                # Close the browser
-                test_handler.teardown_driver()
-                
-                print(f"DEBUG: {browser} visible browser test successful")
-                return jsonify({
-                    'success': True, 
-                    'message': f'{browser} visible browser test passed',
-                    'title': title,
-                    'cloud_mode': False
-                })
-                
-            except Exception as e:
-                print(f"DEBUG: {browser} visible browser test failed: {str(e)}")
-                return jsonify({
-                    'success': False, 
-                    'message': f'{browser} visible browser test failed: {str(e)}',
-                    'title': 'Browser Test Failed',
-                    'cloud_mode': False,
-                    'error': str(e)
-                })
-        
-        cloud_indicators = [
-            'RAILWAY_ENVIRONMENT' in os.environ,
-            'RENDER' in os.environ,
-            'HEROKU' in os.environ,
-            'VERCEL' in os.environ,
-            'NETLIFY' in os.environ,
-            os.path.exists('/.dockerenv'),
-            'DISPLAY' not in os.environ,
-            os.path.exists('/proc/1/cgroup') and 'docker' in open('/proc/1/cgroup').read(),
-        ]
-        
-        if any(cloud_indicators):
-            print(f"DEBUG: Cloud environment detected - testing headless browser")
-            # Test headless browser setup
-            try:
-                handler = CSVActionHandler(browser=browser, session_id='test')
-                handler.setup_driver()
-                if handler.driver is not None:
-                    handler.driver.quit()
-                    return jsonify({
-                        'success': True, 
-                        'message': f'{browser} headless browser test passed',
-                        'title': 'Headless Browser Ready',
-                        'cloud_mode': False
-                    })
-                else:
-                    return jsonify({
-                        'success': False, 
-                        'message': f'{browser} headless browser test failed',
-                        'title': 'Browser Test Failed',
-                        'cloud_mode': True
-                    })
-            except Exception as e:
-                print(f"DEBUG: Headless browser test failed: {str(e)}")
-                return jsonify({
-                    'success': False, 
-                    'message': f'{browser} browser test failed: {str(e)}',
-                    'title': 'Browser Test Failed',
-                    'cloud_mode': True,
-                    'error': str(e)
-                })
-        
-        # Create a test handler for local testing
+        # Create a test handler
         test_handler = WebCSVHandler(browser)
         
         try:
             # Try to setup the driver
             test_handler.setup_driver()
-            
-            if test_handler.driver is None:
-                return jsonify({
-                    'success': True, 
-                    'message': f'{browser} browser test passed (simulated)',
-                    'title': 'Browser Automation Simulated',
-                    'cloud_mode': True
-                })
             
             # Test basic functionality
             test_handler.driver.get("https://www.google.com")
@@ -520,18 +361,13 @@ def api_test_browser():
             return jsonify({
                 'success': True, 
                 'message': f'{browser} browser test passed',
-                'title': title,
-                'cloud_mode': False
+                'title': title
             })
             
         except Exception as e:
             print(f"DEBUG: {browser} browser test failed: {str(e)}")
-            # Return success with cloud mode if browser fails
             return jsonify({
-                'success': True, 
-                'message': f'{browser} browser test passed (simulated due to environment)',
-                'title': 'Browser Automation Simulated',
-                'cloud_mode': True,
+                'success': False, 
                 'error': str(e)
             })
             
@@ -565,125 +401,9 @@ def api_cleanup():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/video/<session_id>')
-def api_get_video(session_id):
-    """Get video information for a session"""
-    try:
-        if session_id in script_sessions:
-            session = script_sessions[session_id]
-            handler = session['handler']
-            video_info = handler.get_video_info()
-            return jsonify({'success': True, 'video': video_info})
-        else:
-            return jsonify({'success': False, 'error': 'Session not found'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/download-video/<session_id>')
-def api_download_video(session_id):
-    """Download video file for a session"""
-    try:
-        if session_id in script_sessions:
-            session = script_sessions[session_id]
-            handler = session['handler']
-            video_info = handler.get_video_info()
-            
-            if video_info['exists']:
-                return send_from_directory(
-                    os.path.dirname(video_info['path']),
-                    video_info['filename'],
-                    as_attachment=True,
-                    download_name=f"automation_{session_id}.mp4"
-                )
-            else:
-                return jsonify({'success': False, 'error': 'Video not found'})
-        else:
-            return jsonify({'success': False, 'error': 'Session not found'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/videos')
-def api_list_videos():
-    """List all available videos"""
-    try:
-        videos_dir = "videos"
-        if not os.path.exists(videos_dir):
-            return jsonify({'success': True, 'videos': []})
-        
-        videos = []
-        for filename in os.listdir(videos_dir):
-            if filename.endswith('.mp4'):
-                file_path = os.path.join(videos_dir, filename)
-                file_size = os.path.getsize(file_path)
-                file_time = os.path.getmtime(file_path)
-                
-                videos.append({
-                    'filename': filename,
-                    'size_mb': round(file_size / (1024 * 1024), 2),
-                    'created': datetime.fromtimestamp(file_time).isoformat(),
-                    'download_url': f'/api/download-video-file/{filename}',
-                    'stream_url': f'/api/stream-video-file/{filename}',
-                    'url': f'/api/stream-video-file/{filename}'  # For backward compatibility
-                })
-        
-        # Sort by creation time (newest first)
-        videos.sort(key=lambda x: x['created'], reverse=True)
-        
-        return jsonify({'success': True, 'videos': videos})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/stream-video-file/<filename>')
-def api_stream_video_file(filename):
-    """Stream a video file for in-browser playback"""
-    try:
-        videos_dir = "videos"
-        file_path = os.path.join(videos_dir, filename)
-        
-        if os.path.exists(file_path):
-            # Stream the video without forcing download
-            response = send_from_directory(
-                videos_dir,
-                filename,
-                as_attachment=False,
-                mimetype='video/mp4'
-            )
-            # Add headers for better video streaming
-            response.headers['Accept-Ranges'] = 'bytes'
-            response.headers['Cache-Control'] = 'no-cache'
-            return response
-        else:
-            return jsonify({'success': False, 'error': 'Video file not found'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/download-video-file/<filename>')
-def api_download_video_file(filename):
-    """Download a specific video file"""
-    try:
-        videos_dir = "videos"
-        file_path = os.path.join(videos_dir, filename)
-        
-        if os.path.exists(file_path):
-            return send_from_directory(
-                videos_dir,
-                filename,
-                as_attachment=True,
-                download_name=filename
-            )
-        else:
-            return jsonify({'success': False, 'error': 'Video file not found'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 if __name__ == '__main__':
     print("🚀 Starting AI Agent Web Server...")
-    
-    # Get port from environment variable (for cloud deployment)
-    port = int(os.environ.get('PORT', 5000))
-    host = '0.0.0.0'
-    
-    print(f"📱 Dashboard will be available at: http://{host}:{port}")
+    print("📱 Dashboard will be available at: http://localhost:5000")
     print("🔧 Make sure to install dependencies first!")
     
     # Start cleanup thread
@@ -699,4 +419,4 @@ if __name__ == '__main__':
     cleanup.daemon = True
     cleanup.start()
     
-    app.run(host=host, port=port, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)

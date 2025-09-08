@@ -17,16 +17,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 import allure
 from allure_commons.types import AttachmentType
-try:
-    import cv2
-    import numpy as np
-    VIDEO_RECORDING_AVAILABLE = True
-except ImportError:
-    VIDEO_RECORDING_AVAILABLE = False
-    print("⚠️ OpenCV not available - video recording disabled")
-
-import threading
-import queue
 
 class CSVActionHandler:
     """Handles actions from CSV file"""
@@ -36,21 +26,14 @@ class CSVActionHandler:
         self.wait = None
         self.test_results = []
         self.screenshots_dir = "allure-results/screenshots"
-        self.videos_dir = "videos"
         self.browser = browser
-        self.session_id = session_id or f"session_{int(time.time())}"
+        self.session_id = session_id
         self.progress = 0
         self.status = 'ready'
         self.current_action = ''
         self.logs = []
         self.completed_actions = 0
         self.total_actions = 0
-        
-        # Video recording setup
-        self.video_recorder = None
-        self.recording_started = False
-        self.video_path = None
-        
         self.ensure_directories()
     
     
@@ -58,23 +41,10 @@ class CSVActionHandler:
         """Ensure required directories exist"""
         os.makedirs("allure-results", exist_ok=True)
         os.makedirs(self.screenshots_dir, exist_ok=True)
-        os.makedirs(self.videos_dir, exist_ok=True)
         
     def setup_driver(self):
         """Setup browser driver based on selected browser"""
         try:
-            # Check if running in cloud environment
-            if self._is_cloud_environment():
-                print("☁️ Running in cloud environment - setting up headless browser")
-                if self._setup_headless_browser(self.browser):
-                    print("✅ Headless browser setup successful - real automation enabled")
-                    return
-                else:
-                    print("❌ Failed to setup headless browser - falling back to simulation")
-                    self.driver = None
-                    self.wait = None
-                    return
-            
             if self.browser.lower() == 'chrome':
                 self._setup_chrome()
             elif self.browser.lower() == 'firefox':
@@ -89,191 +59,9 @@ class CSVActionHandler:
             self.wait = WebDriverWait(self.driver, 20)
             print(f"🌐 {self.browser.capitalize()} browser opened successfully!")
             
-            # Initialize video recording
-            self._setup_video_recording()
-            
         except Exception as e:
             print(f"❌ Failed to open browser: {e}")
-            print("☁️ This might be due to cloud environment limitations")
-            self.driver = None
-            self.wait = None
-    
-    def _is_cloud_environment(self):
-        """Check if running in cloud environment"""
-        import os
-        
-        # Check if user explicitly wants visible browser mode
-        if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
-            print("🔧 FORCE_VISIBLE_BROWSER detected - using visible browser mode")
-            return False
-        
-        cloud_indicators = [
-            'RAILWAY_ENVIRONMENT' in os.environ,
-            'RENDER' in os.environ,
-            'HEROKU' in os.environ,
-            'VERCEL' in os.environ,
-            'NETLIFY' in os.environ,
-            os.path.exists('/.dockerenv'),  # Docker container
-            'DISPLAY' not in os.environ,   # No display available
-        ]
-        return any(cloud_indicators)
-    
-    def _setup_headless_browser(self, browser_type='chrome'):
-        """Setup headless browser for cloud environments"""
-        try:
-            if browser_type.lower() == 'chrome':
-                from selenium import webdriver
-                from selenium.webdriver.chrome.options import Options
-                from webdriver_manager.chrome import ChromeDriverManager
-                from selenium.webdriver.chrome.service import Service
-                
-                chrome_options = Options()
-                chrome_options.add_argument('--headless')
-                chrome_options.add_argument('--no-sandbox')
-                chrome_options.add_argument('--disable-dev-shm-usage')
-                chrome_options.add_argument('--disable-gpu')
-                chrome_options.add_argument('--disable-web-security')
-                chrome_options.add_argument('--disable-features=VizDisplayCompositor')
-                chrome_options.add_argument('--window-size=1920,1080')
-                chrome_options.add_argument('--disable-extensions')
-                chrome_options.add_argument('--disable-plugins')
-                chrome_options.add_argument('--disable-images')
-                chrome_options.add_argument('--remote-debugging-port=9222')
-                chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-                
-                # Set Chrome binary path for Railway/cloud environments
-                chrome_bin = os.environ.get('CHROME_BIN', '/usr/bin/chromium')
-                if os.path.exists(chrome_bin):
-                    chrome_options.binary_location = chrome_bin
-                    print(f"✅ Using Chrome binary: {chrome_bin}")
-                else:
-                    print(f"⚠️ Chrome binary not found at {chrome_bin}, using default")
-                
-                # Additional options for Railway/cloud deployment
-                chrome_options.add_argument('--disable-background-timer-throttling')
-                chrome_options.add_argument('--disable-backgrounding-occluded-windows')
-                chrome_options.add_argument('--disable-renderer-backgrounding')
-                chrome_options.add_argument('--disable-features=TranslateUI')
-                chrome_options.add_argument('--disable-ipc-flooding-protection')
-                chrome_options.add_argument('--disable-logging')
-                chrome_options.add_argument('--disable-default-apps')
-                chrome_options.add_argument('--disable-sync')
-                chrome_options.add_argument('--disable-dev-shm-usage')
-                chrome_options.add_argument('--disable-extensions')
-                chrome_options.add_argument('--disable-plugins')
-                chrome_options.add_argument('--disable-images')
-                chrome_options.add_argument('--disable-javascript')
-                chrome_options.add_argument('--disable-web-security')
-                chrome_options.add_argument('--disable-features=VizDisplayCompositor')
-                chrome_options.add_argument('--remote-debugging-port=9222')
-                chrome_options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-                
-                # Try multiple approaches to setup Chrome
-                driver_setup_success = False
-                
-                # Method 1: Try system chromedriver (most reliable for Railway)
-                try:
-                    self.driver = webdriver.Chrome(options=chrome_options)
-                    driver_setup_success = True
-                    print("✅ Chrome driver setup with system chromedriver")
-                except Exception as e:
-                    print(f"⚠️ System chromedriver failed: {e}")
-                
-                # Method 2: Try ChromeDriverManager
-                if not driver_setup_success:
-                    try:
-                        service = Service(ChromeDriverManager().install())
-                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                        driver_setup_success = True
-                        print("✅ Chrome driver setup with ChromeDriverManager")
-                    except Exception as e:
-                        print(f"⚠️ ChromeDriverManager failed: {e}")
-                
-                # Method 3: Try with xvfb-run (for headless environments)
-                if not driver_setup_success:
-                    try:
-                        chrome_options.add_argument('--display=:99')
-                        self.driver = webdriver.Chrome(options=chrome_options)
-                        driver_setup_success = True
-                        print("✅ Chrome driver setup with xvfb")
-                    except Exception as e:
-                        print(f"⚠️ xvfb setup failed: {e}")
-                
-                # Method 4: Try with minimal options (fallback)
-                if not driver_setup_success:
-                    try:
-                        minimal_options = Options()
-                        minimal_options.add_argument('--headless')
-                        minimal_options.add_argument('--no-sandbox')
-                        minimal_options.add_argument('--disable-dev-shm-usage')
-                        minimal_options.add_argument('--disable-gpu')
-                        minimal_options.add_argument('--window-size=1920,1080')
-                        if os.path.exists(chrome_bin):
-                            minimal_options.binary_location = chrome_bin
-                        self.driver = webdriver.Chrome(options=minimal_options)
-                        driver_setup_success = True
-                        print("✅ Chrome driver setup with minimal options")
-                    except Exception as e:
-                        print(f"⚠️ Minimal options setup failed: {e}")
-                
-                if not driver_setup_success:
-                    # Log system information for debugging
-                    import platform
-                    import subprocess
-                    print(f"❌ All Chrome driver setup methods failed")
-                    print(f"System: {platform.system()} {platform.release()}")
-                    print(f"Python: {platform.python_version()}")
-                    try:
-                        result = subprocess.run(['which', 'chromium'], capture_output=True, text=True)
-                        print(f"Chromium path: {result.stdout.strip()}")
-                    except:
-                        print("Chromium not found in PATH")
-                    try:
-                        result = subprocess.run(['which', 'chromedriver'], capture_output=True, text=True)
-                        print(f"ChromeDriver path: {result.stdout.strip()}")
-                    except:
-                        print("ChromeDriver not found in PATH")
-                    raise Exception("All Chrome driver setup methods failed")
-                print(f"✅ Headless Chrome browser started successfully")
-                
-            elif browser_type.lower() == 'firefox':
-                from selenium import webdriver
-                from selenium.webdriver.firefox.options import Options
-                from webdriver_manager.firefox import GeckoDriverManager
-                from selenium.webdriver.firefox.service import Service
-                
-                firefox_options = Options()
-                firefox_options.add_argument('--headless')
-                firefox_options.add_argument('--no-sandbox')
-                firefox_options.add_argument('--disable-dev-shm-usage')
-                
-                service = Service(GeckoDriverManager().install())
-                self.driver = webdriver.Firefox(service=service, options=firefox_options)
-                print(f"✅ Headless Firefox browser started successfully")
-                
-            elif browser_type.lower() == 'edge':
-                from selenium import webdriver
-                from selenium.webdriver.edge.options import Options
-                from webdriver_manager.microsoft import EdgeChromiumDriverManager
-                from selenium.webdriver.edge.service import Service
-                
-                edge_options = Options()
-                edge_options.add_argument('--headless')
-                edge_options.add_argument('--no-sandbox')
-                edge_options.add_argument('--disable-dev-shm-usage')
-                edge_options.add_argument('--disable-gpu')
-                edge_options.add_argument('--window-size=1920,1080')
-                
-                service = Service(EdgeChromiumDriverManager().install())
-                self.driver = webdriver.Edge(service=service, options=edge_options)
-                print(f"✅ Headless Edge browser started successfully")
-            
-            self.wait = WebDriverWait(self.driver, 10)
-            return True
-            
-        except Exception as e:
-            print(f"❌ Failed to setup headless {browser_type} browser: {str(e)}")
-            return False
+            raise e
     
     def _setup_chrome(self):
         """Setup Chrome driver"""
@@ -319,126 +107,8 @@ class CSVActionHandler:
         self.driver = webdriver.Edge(service=service, options=options)
         self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
-    def _setup_video_recording(self):
-        """Setup video recording for the session"""
-        if not VIDEO_RECORDING_AVAILABLE:
-            print("⚠️ Video recording not available - OpenCV not installed")
-            self.recording_started = False
-            return
-            
-        try:
-            # Create video recorder
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            video_filename = f"automation_{self.session_id}_{timestamp}.mp4"
-            self.video_path = os.path.join(self.videos_dir, video_filename)
-            
-            # Initialize video writer with better codec
-            # Try different codecs for better compatibility
-            codecs_to_try = [
-                ('mp4v', cv2.VideoWriter_fourcc(*'mp4v')),
-                ('XVID', cv2.VideoWriter_fourcc(*'XVID')),
-                ('MJPG', cv2.VideoWriter_fourcc(*'MJPG')),
-                ('H264', cv2.VideoWriter_fourcc(*'H264'))
-            ]
-            
-            self.video_writer = None
-            for codec_name, fourcc in codecs_to_try:
-                try:
-                    self.video_writer = cv2.VideoWriter(
-                        self.video_path, 
-                        fourcc, 
-                        2,  # 2 FPS for reasonable file size
-                        (1920, 1080)
-                    )
-                    if self.video_writer.isOpened():
-                        print(f"🎥 Video recording started with {codec_name} codec: {self.video_path}")
-                        break
-                    else:
-                        self.video_writer.release()
-                        self.video_writer = None
-                except Exception as e:
-                    print(f"⚠️ Failed to initialize {codec_name} codec: {e}")
-                    continue
-            
-            if self.video_writer is None:
-                print("❌ Failed to initialize any video codec")
-                self.recording_started = False
-            else:
-                self.recording_started = True
-            
-        except Exception as e:
-            print(f"⚠️ Video recording setup failed: {e}")
-            self.recording_started = False
-    
-    def _capture_video_frame(self, action_name=""):
-        """Capture a frame for video recording"""
-        if not VIDEO_RECORDING_AVAILABLE or not self.recording_started or not self.driver or not self.video_writer:
-            return
-        
-        try:
-            # Take screenshot
-            screenshot = self.driver.get_screenshot_as_png()
-            
-            # Convert to OpenCV format
-            nparr = np.frombuffer(screenshot, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            if frame is None:
-                print("⚠️ Failed to decode screenshot")
-                return
-            
-            # Resize frame to exact dimensions
-            frame = cv2.resize(frame, (1920, 1080))
-            
-            # Ensure frame is in correct format (BGR)
-            if len(frame.shape) == 3 and frame.shape[2] == 3:
-                # Add action text overlay
-                if action_name:
-                    cv2.putText(frame, f"Action: {action_name}", 
-                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                
-                # Add timestamp
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                cv2.putText(frame, timestamp, 
-                           (10, frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                
-                # Add URL
-                url = self.driver.current_url
-                if len(url) > 50:
-                    url = url[:47] + "..."
-                cv2.putText(frame, url, 
-                           (10, frame.shape[0] - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                
-                # Write frame to video
-                self.video_writer.write(frame)
-            else:
-                print("⚠️ Invalid frame format")
-            
-        except Exception as e:
-            print(f"⚠️ Failed to capture video frame: {e}")
-    
     def teardown_driver(self):
-        """Close browser and stop video recording"""
-        if self.recording_started and self.video_writer:
-            try:
-                self.video_writer.release()
-                self.video_writer = None
-                self.recording_started = False
-                
-                # Verify video file was created and has content
-                if os.path.exists(self.video_path):
-                    file_size = os.path.getsize(self.video_path)
-                    if file_size > 0:
-                        print(f"🎬 Video recording completed: {self.video_path} ({round(file_size / 1024, 2)} KB)")
-                    else:
-                        print(f"⚠️ Video file created but is empty: {self.video_path}")
-                        # Remove empty file
-                        os.remove(self.video_path)
-                else:
-                    print(f"⚠️ Video file was not created: {self.video_path}")
-            except Exception as e:
-                print(f"⚠️ Error closing video recording: {e}")
-        
+        """Close browser"""
         if self.driver:
             time.sleep(3)  # Keep browser open for 3 seconds
             self.driver.quit()
@@ -451,17 +121,6 @@ class CSVActionHandler:
             screenshot_path = os.path.join(self.screenshots_dir, f"{step_name}_{timestamp}.png")
             self.driver.save_screenshot(screenshot_path)
             allure.attach.file(screenshot_path, name=step_name, attachment_type=AttachmentType.PNG)
-            
-            # Log screenshot info for live monitoring
-            page_info = {
-                'url': self.driver.current_url,
-                'title': self.driver.title,
-                'timestamp': timestamp,
-                'action': step_name,
-                'screenshot_path': screenshot_path
-            }
-            self.logs.append(f"📸 Screenshot taken: {step_name} - {self.driver.current_url}")
-            
             return screenshot_path
         return None
     
@@ -529,19 +188,8 @@ class CSVActionHandler:
         self.logs.append(f"Executing: {self.current_action}")
         print(f"🔄 Executing: {action} on {xpath}")
         
-        # Check if running in cloud environment
-        # Check if we have a real browser driver (headless or regular)
-        if self.driver is None and action not in ['wait', 'verify']:
-            print(f"☁️ No browser available: Simulating {action} action")
-            self.logs.append(f"Simulated: {self.current_action}")
-            time.sleep(1)  # Simulate action time
-            return True
-        
         # Take screenshot before action
         self.take_screenshot(f"before_{step_name}")
-        
-        # Capture video frame before action
-        self._capture_video_frame(f"Before: {action}")
         
         try:
             if action.lower() == 'open_url':
@@ -657,9 +305,6 @@ class CSVActionHandler:
             # Take screenshot after successful action
             self.take_screenshot(f"after_{step_name}")
             
-            # Capture video frame after action
-            self._capture_video_frame(f"After: {action}")
-            
             # Update progress
             if hasattr(self, 'total_actions') and self.total_actions > 0:
                 self.completed_actions += 1
@@ -671,8 +316,6 @@ class CSVActionHandler:
             print(f"   ❌ Failed: {e}")
             # Take screenshot on failure
             self.take_screenshot(f"failed_{step_name}")
-            # Capture error frame
-            self._capture_video_frame(f"Error: {action}")
             self.status = 'error'
             return False
     
@@ -730,16 +373,7 @@ class CSVActionHandler:
         print(f"📋 Found {len(actions)} actions to execute")
         
         # Setup browser
-        try:
-            self.setup_driver()
-            if self.driver is None:
-                print("❌ Browser setup failed - cannot proceed with automation")
-                self.status = 'error'
-                return False
-        except Exception as e:
-            print(f"❌ Browser setup error: {e}")
-            self.status = 'error'
-            return False
+        self.setup_driver()
         
         # Initialize Allure test
         with allure.step(f"CSV Action Test: {test_name}"):
@@ -771,11 +405,9 @@ class CSVActionHandler:
                 return True
                 
             except Exception as e:
-                error_msg = f"Test failed with error: {e}"
-                print(f"❌ {error_msg}")
+                print(f"❌ Test failed with error: {e}")
                 self.status = 'error'
-                self.logs.append(error_msg)
-                self.logs.append(f"Error details: {type(e).__name__}: {str(e)}")
+                self.logs.append(f"Test failed with error: {e}")
                 allure.attach(f"Test failed with error: {e}", 
                             name="Test Error", attachment_type=AttachmentType.TEXT)
                 return False
@@ -785,25 +417,6 @@ class CSVActionHandler:
                 
                 # Generate Allure report
                 self.generate_allure_report(test_name, actions, True)
-                
-                # Log video information
-                if self.video_path and os.path.exists(self.video_path):
-                    file_size = os.path.getsize(self.video_path)
-                    self.logs.append(f"🎬 Video recorded: {self.video_path} ({round(file_size / (1024 * 1024), 2)} MB)")
-    
-    def get_video_info(self):
-        """Get information about the recorded video"""
-        if self.video_path and os.path.exists(self.video_path):
-            file_size = os.path.getsize(self.video_path)
-            return {
-                'path': self.video_path,
-                'filename': os.path.basename(self.video_path),
-                'size': file_size,
-                'size_mb': round(file_size / (1024 * 1024), 2),
-                'exists': True,
-                'session_id': self.session_id
-            }
-        return {'exists': False}
     
     def create_sample_csv(self, test_name):
         """Create a sample CSV file for the user"""

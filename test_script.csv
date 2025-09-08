@@ -1,7 +1,0 @@
-action,xpath,data
-open_url,https://httpbin.org/forms/post,
-wait,3,
-type,//input[@name="custname"],AI Agent Test
-type,//input[@name="custtel"],1234567890
-type,//input[@name="custemail"],test@example.com
-verify,text=Customer name,

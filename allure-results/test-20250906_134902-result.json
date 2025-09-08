@@ -1,0 +1,53 @@
+{
+  "uuid": "test-20250906_134902",
+  "name": "test_enhanced_actions",
+  "fullName": "CSV Action Test: test_enhanced_actions",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1757146742485,
+  "stop": 1757146742485,
+  "steps": [
+    {
+      "name": "Step 1: open_url on https://example.com",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    },
+    {
+      "name": "Step 2: wait on 3",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    },
+    {
+      "name": "Step 3: type on //input[@id=\"search\"]",
+      "status": "failed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    },
+    {
+      "name": "Step 4: click on //button[@id=\"search-button\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    },
+    {
+      "name": "Step 5: wait_for_element on //div[@id=\"results\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    },
+    {
+      "name": "Step 6: verify on text=Search results",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757146742485,
+      "stop": 1757146742485
+    }
+  ]
+}

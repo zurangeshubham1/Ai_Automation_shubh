@@ -1,4 +1,0 @@
-action,xpath,data
-open_url,https://httpbin.org/get,
-wait,2,
-verify,text=httpbin,

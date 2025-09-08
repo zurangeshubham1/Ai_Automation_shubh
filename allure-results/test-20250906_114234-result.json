@@ -1,0 +1,67 @@
+{
+  "uuid": "test-20250906_114234",
+  "name": "sample_actions",
+  "fullName": "CSV Action Test: sample_actions",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1757139154094,
+  "stop": 1757139154094,
+  "steps": [
+    {
+      "name": "Step 1: open_url on https://portal.cluster.dev.supervvisor.com/home",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 2: click on //span[text()=\"Login\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 3: type on //input[@id=\"username\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 4: click on //button[text()='Continue']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 5: type on //input[@id=\"password\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 6: click on //button[text()='Continue']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 7: click on //span[normalize-space()='shubham testing']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    },
+    {
+      "name": "Step 8: verify on //span[text()='Dashboard']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757139154094,
+      "stop": 1757139154094
+    }
+  ]
+}

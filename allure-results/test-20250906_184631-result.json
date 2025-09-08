@@ -1,0 +1,116 @@
+{
+  "uuid": "test-20250906_184631",
+  "name": "sample_actions",
+  "fullName": "CSV Action Test: sample_actions",
+  "status": "passed",
+  "stage": "finished",
+  "start": 1757164591544,
+  "stop": 1757164591544,
+  "steps": [
+    {
+      "name": "Step 1: open_url on https://portal.cluster.dev.supervvisor.com/home",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 2: click on //span[text()=\"Login\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 3: type on //input[@id=\"username\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 4: click on //button[text()='Continue']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 5: type on //input[@id=\"password\"]",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 6: click on //button[text()='Continue']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 7: click on //span[normalize-space()='shubham testing']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 8: verify on //span[text()='Dashboard']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 9: click on //*[text()='Open bento menu']",
+      "status": "failed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 10: click on //img[@alt='/trac']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 11: click on //span[normalize-space()='PD Claims']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 12: click on //a[text()='New Claim']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 13: type on //input[@placeholder='9876']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 14: click on //span[text()='Select claim source']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    },
+    {
+      "name": "Step 15: click on //span[text()='Mail']",
+      "status": "passed",
+      "stage": "finished",
+      "start": 1757164591544,
+      "stop": 1757164591544
+    }
+  ]
+}
