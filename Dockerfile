@@ -64,18 +64,14 @@ ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 # Expose port
 EXPOSE 5000
 
-# Create startup script
+# Create startup script for xvfb
 RUN echo '#!/bin/bash\n\
 # Start xvfb in background\n\
 Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &\n\
 # Wait a moment for xvfb to start\n\
 sleep 2\n\
-# Set default PORT if not provided\n\
-if [ -z "$PORT" ]; then\n\
-    export PORT=5000\n\
-fi\n\
-# Start the application\n\
-exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120' > /app/start.sh && \
+# Execute the Procfile command\n\
+exec sh -c "PORT=${PORT:-5000} && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"' > /app/start.sh && \
     chmod +x /app/start.sh
 
 # Start command
