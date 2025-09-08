@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["chromium", "chromedriver", "xvfb"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "echo 'Build phase completed'"
+]
+
+[start]
+cmd = "Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 & sleep 2 && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
