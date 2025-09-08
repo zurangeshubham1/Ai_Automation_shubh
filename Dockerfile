@@ -1,10 +1,10 @@
-# Use Python 3.11 slim image for Railway deployment
+# Use Python 3.11 slim image
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Chrome and video recording
+# Install system dependencies for Chrome
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -64,15 +64,5 @@ ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 # Expose port
 EXPOSE 5000
 
-# Create startup script for xvfb
-RUN echo '#!/bin/bash\n\
-# Start xvfb in background\n\
-Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &\n\
-# Wait a moment for xvfb to start\n\
-sleep 2\n\
-# Start the application with default port\n\
-exec gunicorn app:app --bind 0.0.0.0:5000 --workers 1 --timeout 120' > /app/start.sh && \
-    chmod +x /app/start.sh
-
-# Start command
-CMD ["/app/start.sh"]
+# Start command - use direct gunicorn command
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 & sleep 2 && gunicorn app:app --bind 0.0.0.0:5000 --workers 1 --timeout 120"]
