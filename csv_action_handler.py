@@ -141,8 +141,50 @@ class CSVActionHandler:
                 chrome_options.add_argument('--remote-debugging-port=9222')
                 chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 
-                service = Service(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                # Additional options for Railway/cloud deployment
+                chrome_options.add_argument('--disable-background-timer-throttling')
+                chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+                chrome_options.add_argument('--disable-renderer-backgrounding')
+                chrome_options.add_argument('--disable-features=TranslateUI')
+                chrome_options.add_argument('--disable-ipc-flooding-protection')
+                chrome_options.add_argument('--single-process')
+                chrome_options.add_argument('--disable-logging')
+                chrome_options.add_argument('--disable-default-apps')
+                chrome_options.add_argument('--disable-sync')
+                
+                # Try multiple approaches to setup Chrome
+                driver_setup_success = False
+                
+                # Method 1: Try ChromeDriverManager
+                try:
+                    service = Service(ChromeDriverManager().install())
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                    driver_setup_success = True
+                    print("✅ Chrome driver setup with ChromeDriverManager")
+                except Exception as e:
+                    print(f"⚠️ ChromeDriverManager failed: {e}")
+                
+                # Method 2: Try system chromedriver
+                if not driver_setup_success:
+                    try:
+                        self.driver = webdriver.Chrome(options=chrome_options)
+                        driver_setup_success = True
+                        print("✅ Chrome driver setup with system chromedriver")
+                    except Exception as e:
+                        print(f"⚠️ System chromedriver failed: {e}")
+                
+                # Method 3: Try with xvfb-run (for headless environments)
+                if not driver_setup_success:
+                    try:
+                        chrome_options.add_argument('--display=:99')
+                        self.driver = webdriver.Chrome(options=chrome_options)
+                        driver_setup_success = True
+                        print("✅ Chrome driver setup with xvfb")
+                    except Exception as e:
+                        print(f"⚠️ xvfb setup failed: {e}")
+                
+                if not driver_setup_success:
+                    raise Exception("All Chrome driver setup methods failed")
                 print(f"✅ Headless Chrome browser started successfully")
                 
             elif browser_type.lower() == 'firefox':
@@ -639,7 +681,16 @@ class CSVActionHandler:
         print(f"📋 Found {len(actions)} actions to execute")
         
         # Setup browser
-        self.setup_driver()
+        try:
+            self.setup_driver()
+            if self.driver is None:
+                print("❌ Browser setup failed - cannot proceed with automation")
+                self.status = 'error'
+                return False
+        except Exception as e:
+            print(f"❌ Browser setup error: {e}")
+            self.status = 'error'
+            return False
         
         # Initialize Allure test
         with allure.step(f"CSV Action Test: {test_name}"):
