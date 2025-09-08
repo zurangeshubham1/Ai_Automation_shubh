@@ -62,7 +62,7 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 
 # Expose port
-EXPOSE $PORT
+EXPOSE 5000
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
@@ -70,6 +70,10 @@ RUN echo '#!/bin/bash\n\
 Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &\n\
 # Wait a moment for xvfb to start\n\
 sleep 2\n\
+# Set default PORT if not provided\n\
+if [ -z "$PORT" ]; then\n\
+    export PORT=5000\n\
+fi\n\
 # Start the application\n\
 exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120' > /app/start.sh && \
     chmod +x /app/start.sh
