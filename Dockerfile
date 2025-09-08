@@ -61,12 +61,8 @@ ENV CHROME_PATH=/usr/bin/chromium
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 ENV PATH="/usr/bin/chromium:/usr/bin/chromedriver:$PATH"
 
-# Copy startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
 # Expose port
-EXPOSE $PORT
+EXPOSE 5000
 
-# Start command
-CMD ["/app/start.sh"]
+# Start command - simple and direct
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 & sleep 2 && gunicorn app:app --bind 0.0.0.0:5000 --workers 1 --timeout 120"]
