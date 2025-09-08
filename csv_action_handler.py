@@ -736,68 +736,112 @@ class CSVActionHandler:
         self.progress = 0
         self.completed_actions = 0
         
-        # Read actions from CSV
-        actions = self.read_csv_actions(csv_file)
-        
-        if not actions:
-            print("❌ No valid actions found in CSV file")
-            self.status = 'error'
-            return False
-        
-        self.total_actions = len(actions)
-        print(f"📋 Found {len(actions)} actions to execute")
-        
-        # Setup browser
-        self.setup_driver()
-        
-        # Start video recording
-        self.start_video_recording(test_name)
-        
-        # Initialize Allure test
-        with allure.step(f"CSV Action Test: {test_name}"):
-            try:
-                # Execute each action
-                for i, action_data in enumerate(actions, 1):
-                    with allure.step(f"Step {i}: {action_data['action']} on {action_data['xpath']}"):
-                        print(f"\n📝 Step {i}/{len(actions)}: {action_data['action']} on {action_data['xpath']}")
-                        success = self.execute_action(
-                            action_data['action'], 
-                            action_data['xpath'], 
-                            action_data['data']
-                        )
-                        
-                        # Store result for Allure report
-                        action_data['success'] = success
-                        
-                        if not success:
-                            print(f"❌ Test failed at step {i}")
-                            allure.attach(f"Test failed at step {i}: {action_data['action']} on {action_data['xpath']}", 
-                                        name="Test Failure", attachment_type=AttachmentType.TEXT)
-                            return False
-                
-                print(f"\n🎉 ALL ACTIONS COMPLETED! Test passed successfully!")
-                self.status = 'completed'
-                self.progress = 100
-                allure.attach("All actions completed successfully", 
-                            name="Test Success", attachment_type=AttachmentType.TEXT)
-                return True
-                
-            except Exception as e:
-                print(f"❌ Test failed with error: {e}")
+        try:
+            # Read actions from CSV
+            actions = self.read_csv_actions(csv_file)
+            
+            if not actions:
+                print("❌ No valid actions found in CSV file")
                 self.status = 'error'
-                self.logs.append(f"Test failed with error: {e}")
-                allure.attach(f"Test failed with error: {e}", 
-                            name="Test Error", attachment_type=AttachmentType.TEXT)
                 return False
             
-            finally:
+            self.total_actions = len(actions)
+            print(f"📋 Found {len(actions)} actions to execute")
+            
+            # Setup browser with timeout
+            print("🌐 Setting up browser...")
+            self.setup_driver()
+            
+            # Start video recording
+            print("🎥 Starting video recording...")
+            self.start_video_recording(test_name)
+            
+            # Initialize Allure test
+            with allure.step(f"CSV Action Test: {test_name}"):
+                try:
+                    # Execute each action
+                    for i, action_data in enumerate(actions, 1):
+                        with allure.step(f"Step {i}: {action_data['action']} on {action_data['xpath']}"):
+                            print(f"\n📝 Step {i}/{len(actions)}: {action_data['action']} on {action_data['xpath']}")
+                            
+                            # Add timeout for each action
+                            import signal
+                            
+                            def timeout_handler(signum, frame):
+                                raise TimeoutError(f"Action {i} timed out after 30 seconds")
+                            
+                            # Set timeout for action execution (30 seconds per action)
+                            signal.signal(signal.SIGALRM, timeout_handler)
+                            signal.alarm(30)
+                            
+                            try:
+                                success = self.execute_action(
+                                    action_data['action'], 
+                                    action_data['xpath'], 
+                                    action_data['data']
+                                )
+                                signal.alarm(0)  # Cancel timeout
+                                
+                                # Store result for Allure report
+                                action_data['success'] = success
+                                
+                                if not success:
+                                    print(f"❌ Test failed at step {i}")
+                                    allure.attach(f"Test failed at step {i}: {action_data['action']} on {action_data['xpath']}", 
+                                                name="Test Failure", attachment_type=AttachmentType.TEXT)
+                                    return False
+                                    
+                            except TimeoutError as te:
+                                signal.alarm(0)  # Cancel timeout
+                                print(f"⏰ Action {i} timed out: {te}")
+                                self.status = 'error'
+                                allure.attach(f"Action {i} timed out: {te}", 
+                                            name="Action Timeout", attachment_type=AttachmentType.TEXT)
+                                return False
+                    
+                    print(f"\n🎉 ALL ACTIONS COMPLETED! Test passed successfully!")
+                    self.status = 'completed'
+                    self.progress = 100
+                    allure.attach("All actions completed successfully", 
+                                name="Test Success", attachment_type=AttachmentType.TEXT)
+                    return True
+                    
+                except Exception as e:
+                    print(f"❌ Test failed with error: {e}")
+                    self.status = 'error'
+                    self.logs.append(f"Test failed with error: {e}")
+                    allure.attach(f"Test failed with error: {e}", 
+                                name="Test Error", attachment_type=AttachmentType.TEXT)
+                    return False
+                
+        except Exception as e:
+            print(f"❌ Failed to setup or execute script: {e}")
+            self.status = 'error'
+            self.logs.append(f"Setup failed with error: {e}")
+            return False
+            
+        finally:
+            try:
                 # Stop video recording
+                print("⏹️ Stopping video recording...")
                 self.stop_video_recording()
                 
+                # Close browser
+                print("🔄 Closing browser...")
                 self.teardown_driver()
                 
                 # Generate Allure report
-                self.generate_allure_report(test_name, actions, True)
+                print("📊 Generating Allure report...")
+                self.generate_allure_report(test_name, actions if 'actions' in locals() else [], True)
+                
+            except Exception as e:
+                print(f"⚠️ Error in cleanup: {e}")
+                # Force close browser if it exists
+                if hasattr(self, 'driver') and self.driver:
+                    try:
+                        self.driver.quit()
+                    except:
+                        pass
     
     def create_sample_csv(self, test_name):
         """Create a sample CSV file for the user"""

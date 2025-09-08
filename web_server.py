@@ -214,14 +214,46 @@ def api_run_script():
         def run_script():
             try:
                 print(f"DEBUG: Starting script execution for {script_name}")
-                handler.run_actions_from_csv(script_name)
-                script_sessions[session_id]['status'] = handler.status
-                script_sessions[session_id]['end_time'] = datetime.now()
-                print(f"DEBUG: Script {script_name} completed with status: {handler.status}")
+                
+                # Add overall timeout for script execution (5 minutes)
+                import signal
+                
+                def script_timeout_handler(signum, frame):
+                    print(f"DEBUG: Script {script_name} timed out after 5 minutes")
+                    script_sessions[session_id]['status'] = 'timeout'
+                    script_sessions[session_id]['error'] = 'Script execution timed out after 5 minutes'
+                    # Force close browser
+                    if hasattr(handler, 'driver') and handler.driver:
+                        try:
+                            handler.driver.quit()
+                        except:
+                            pass
+                    raise TimeoutError("Script execution timed out")
+                
+                # Set timeout for entire script execution
+                signal.signal(signal.SIGALRM, script_timeout_handler)
+                signal.alarm(300)  # 5 minutes timeout
+                
+                try:
+                    result = handler.run_actions_from_csv(script_name)
+                    signal.alarm(0)  # Cancel timeout
+                    
+                    script_sessions[session_id]['status'] = handler.status
+                    script_sessions[session_id]['end_time'] = datetime.now()
+                    script_sessions[session_id]['result'] = result
+                    print(f"DEBUG: Script {script_name} completed with status: {handler.status}")
+                    
+                except TimeoutError:
+                    print(f"DEBUG: Script {script_name} timed out")
+                    script_sessions[session_id]['status'] = 'timeout'
+                    script_sessions[session_id]['error'] = 'Script execution timed out'
+                    script_sessions[session_id]['end_time'] = datetime.now()
+                    
             except Exception as e:
                 print(f"DEBUG: Script {script_name} failed with error: {str(e)}")
                 script_sessions[session_id]['status'] = 'error'
                 script_sessions[session_id]['error'] = str(e)
+                script_sessions[session_id]['end_time'] = datetime.now()
                 # Make sure to close browser if it was opened
                 if hasattr(handler, 'driver') and handler.driver:
                     try:
