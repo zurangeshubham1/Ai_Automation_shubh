@@ -175,30 +175,43 @@ class CSVActionHandler:
                 import cv2
                 import numpy as np
                 
-                # Create a simple video with a few frames
+                # Create a video with browser-like visuals
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 out = cv2.VideoWriter(video_path, fourcc, 10.0, (1920, 1080))
                 
-                # Create some sample frames
+                # Create frames that look like a browser with webpage content
                 for i in range(30):  # 3 seconds at 10 fps
-                    # Create a frame with some content
+                    # Create a frame that looks like a browser
                     frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
                     
-                    # Add some text to the frame
-                    cv2.putText(frame, f'Script Execution - Frame {i+1}', (50, 100), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-                    cv2.putText(frame, f'Script: {self.video_filename}', (50, 200), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    cv2.putText(frame, f'Browser: {self.browser}', (50, 300), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    cv2.putText(frame, f'Status: Recording...', (50, 400), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+                    # Browser chrome (top bar)
+                    frame[0:60, :] = [50, 50, 50]  # Dark gray browser bar
+                    
+                    # Address bar
+                    frame[20:40, 100:800] = [80, 80, 80]  # Address bar
+                    cv2.putText(frame, 'https://example.com/forms', (110, 35), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                    
+                    # Page content area
+                    frame[60:1080, :] = [240, 240, 240]  # Light gray page background
+                    
+                    # Simulate webpage content
+                    cv2.putText(frame, 'Example Forms Page', (100, 150), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 3)
+                    cv2.putText(frame, 'This is a simulated browser view', (100, 200), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 100), 2)
+                    cv2.putText(frame, 'Script execution in progress...', (100, 250), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 150, 0), 2)
+                    
+                    # Add frame counter
+                    cv2.putText(frame, f'Frame {i+1}/30', (1600, 1000), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                     
                     out.write(frame)
                 
                 out.release()
                 self.video_path = video_path
-                self.add_log(f"📁 Created OpenCV video file: {self.video_filename}")
+                self.add_log(f"📁 Created browser simulation video: {self.video_filename}")
                 
             except ImportError:
                 # Fallback: create a simple MP4 file
@@ -287,30 +300,73 @@ class CSVActionHandler:
             try:
                 import cv2
                 import numpy as np
+                from PIL import Image
+                import io
+                import base64
                 
-                # Create a simple video with a few frames
+                # Create a video with actual browser screenshots
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 out = cv2.VideoWriter(self.video_path, fourcc, 10.0, (1920, 1080))
                 
-                # Create some sample frames (in a real implementation, these would be actual screenshots)
-                for i in range(30):  # 3 seconds at 10 fps
-                    # Create a frame with some content
-                    frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
-                    
-                    # Add some text to the frame
-                    cv2.putText(frame, f'Script Execution - Frame {i+1}', (50, 100), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-                    cv2.putText(frame, f'Script: {self.video_filename}', (50, 200), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    cv2.putText(frame, f'Browser: {self.browser}', (50, 300), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    cv2.putText(frame, f'Status: Completed', (50, 400), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                    
-                    out.write(frame)
+                # Get browser screenshots if available
+                screenshots = getattr(self, 'screenshots', [])
+                
+                if screenshots:
+                    # Use actual screenshots
+                    for screenshot_data in screenshots:
+                        try:
+                            # Convert base64 screenshot to OpenCV frame
+                            if isinstance(screenshot_data, str):
+                                # Base64 encoded image
+                                img_data = base64.b64decode(screenshot_data)
+                                img = Image.open(io.BytesIO(img_data))
+                                frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                                
+                                # Resize to 1920x1080 if needed
+                                if frame.shape[:2] != (1080, 1920):
+                                    frame = cv2.resize(frame, (1920, 1080))
+                                
+                                # Add text overlay
+                                cv2.putText(frame, f'Script: {self.video_filename}', (50, 50), 
+                                           cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                
+                                out.write(frame)
+                        except Exception as e:
+                            self.add_log(f"⚠️ Failed to process screenshot: {e}")
+                            continue
+                else:
+                    # Fallback: create frames with browser simulation
+                    for i in range(30):  # 3 seconds at 10 fps
+                        # Create a frame that looks like a browser
+                        frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+                        
+                        # Browser chrome (top bar)
+                        frame[0:60, :] = [50, 50, 50]  # Dark gray browser bar
+                        
+                        # Address bar
+                        frame[20:40, 100:800] = [80, 80, 80]  # Address bar
+                        cv2.putText(frame, 'https://example.com/forms', (110, 35), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                        
+                        # Page content area
+                        frame[60:1080, :] = [240, 240, 240]  # Light gray page background
+                        
+                        # Simulate webpage content
+                        cv2.putText(frame, 'Example Forms Page', (100, 150), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 3)
+                        cv2.putText(frame, 'This is a simulated browser view', (100, 200), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 100, 100), 2)
+                        cv2.putText(frame, 'Script execution in progress...', (100, 250), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 150, 0), 2)
+                        
+                        # Add frame counter
+                        cv2.putText(frame, f'Frame {i+1}/30', (1600, 1000), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        
+                        out.write(frame)
                 
                 out.release()
-                self.add_log(f"📁 Created OpenCV video file: {self.video_filename}")
+                self.add_log(f"📁 Created visual video file: {self.video_filename}")
                 
             except ImportError:
                 # Fallback: create a simple MP4 file
@@ -330,6 +386,24 @@ class CSVActionHandler:
             
         except Exception as e:
             self.add_log(f"❌ Failed to create video from frames: {e}")
+
+    def capture_browser_screenshot(self):
+        """Capture a screenshot of the current browser state"""
+        try:
+            if hasattr(self, 'driver') and self.driver:
+                # Take screenshot
+                screenshot = self.driver.get_screenshot_as_base64()
+                
+                # Store screenshot for video creation
+                if not hasattr(self, 'screenshots'):
+                    self.screenshots = []
+                self.screenshots.append(screenshot)
+                
+                self.add_log("📸 Browser screenshot captured")
+                return screenshot
+        except Exception as e:
+            self.add_log(f"⚠️ Failed to capture screenshot: {e}")
+        return None
 
     def add_log(self, message):
         """Add log message"""
@@ -466,6 +540,9 @@ class CSVActionHandler:
         # Take screenshot before action
         self.take_screenshot(f"before_{step_name}")
         
+        # Capture screenshot for video creation
+        self.capture_browser_screenshot()
+        
         try:
             if action.lower() == 'open_url':
                 self.driver.get(xpath)
@@ -584,6 +661,9 @@ class CSVActionHandler:
             if hasattr(self, 'total_actions') and self.total_actions > 0:
                 self.completed_actions += 1
                 self.progress = int((self.completed_actions / self.total_actions) * 100)
+            
+            # Capture screenshot after successful action
+            self.capture_browser_screenshot()
             
             return True
             
