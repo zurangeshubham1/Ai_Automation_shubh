@@ -80,6 +80,12 @@ class CSVActionHandler:
     def _is_cloud_environment(self):
         """Check if running in cloud environment"""
         import os
+        
+        # Check if user explicitly wants visible browser mode
+        if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
+            print("🔧 FORCE_VISIBLE_BROWSER detected - using visible browser mode")
+            return False
+        
         cloud_indicators = [
             'RAILWAY_ENVIRONMENT' in os.environ,
             'RENDER' in os.environ,

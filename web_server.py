@@ -168,6 +168,17 @@ def api_run_script():
                 
                 # Check if running in cloud environment
                 import os
+                
+                # Check if user explicitly wants visible browser mode
+                if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
+                    print(f"DEBUG: FORCE_VISIBLE_BROWSER detected - using visible browser mode")
+                    # Run normally for local environment
+                    handler.run_actions_from_csv(script_name)
+                    script_sessions[session_id]['status'] = handler.status
+                    script_sessions[session_id]['end_time'] = datetime.now()
+                    print(f"DEBUG: Script {script_name} completed with visible browser, status: {handler.status}")
+                    return
+                
                 cloud_indicators = [
                     'RAILWAY_ENVIRONMENT' in os.environ,
                     'RENDER' in os.environ,
@@ -397,6 +408,50 @@ def api_test_browser():
         
         # Check if running in cloud environment first
         import os
+        
+        # Check if user explicitly wants visible browser mode
+        if os.environ.get('FORCE_VISIBLE_BROWSER', '').lower() in ['true', '1', 'yes']:
+            print(f"DEBUG: FORCE_VISIBLE_BROWSER detected - testing visible browser")
+            # Create a test handler for local testing
+            test_handler = WebCSVHandler(browser)
+            
+            try:
+                # Try to setup the driver
+                test_handler.setup_driver()
+                
+                if test_handler.driver is None:
+                    return jsonify({
+                        'success': False, 
+                        'message': f'{browser} browser test failed - driver not available',
+                        'title': 'Browser Test Failed',
+                        'cloud_mode': False
+                    })
+                
+                # Test basic functionality
+                test_handler.driver.get("https://www.google.com")
+                title = test_handler.driver.title
+                
+                # Close the browser
+                test_handler.teardown_driver()
+                
+                print(f"DEBUG: {browser} visible browser test successful")
+                return jsonify({
+                    'success': True, 
+                    'message': f'{browser} visible browser test passed',
+                    'title': title,
+                    'cloud_mode': False
+                })
+                
+            except Exception as e:
+                print(f"DEBUG: {browser} visible browser test failed: {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'message': f'{browser} visible browser test failed: {str(e)}',
+                    'title': 'Browser Test Failed',
+                    'cloud_mode': False,
+                    'error': str(e)
+                })
+        
         cloud_indicators = [
             'RAILWAY_ENVIRONMENT' in os.environ,
             'RENDER' in os.environ,
